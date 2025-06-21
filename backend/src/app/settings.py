@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'dj_rest_auth.registration',
 
-    'users.apps.UsersConfig',
+    'users',
 ]
 
 SITE_ID = 1
@@ -143,6 +143,8 @@ REST_AUTH = {
     # 'JWT_AUTH_COOKIE': 'my-app-auth',
     # 'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
     'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
+    'PASSWORD_RESET_SERIALIZER': "users.serializers.MyPasswordResetSerializer",
+    'PASSWORD_RESET_CONFIRM_SERIALIZER': "users.serializers.MyPasswordResetConfirmSerializer",
     # 'DEFAULT_AUTHENTICATION_CLASSES': (
     #     'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     # )
@@ -161,19 +163,15 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-ACCOUNT_LOGIN_METHODS = {'email'}
+# ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*', 'role*']
 
-ACCOUNT_SIGNUP_FIELDS = [
-    'email*',       # required
-    'username*',    # required
-    'password1*',   # required
-    'password2*',   # required
-    'role*',        # if you added a role field
-]
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-ACCOUNT_TEMPLATE_EXTENSION = "html"
+# ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+# ACCOUNT_USERNAME_REQUIRED = False
+
 ACCOUNT_EMAIL_CONFIRMATION_HMAC = False
 
 ACCOUNT_ADAPTER = 'users.adapter.AccountAdapter'
