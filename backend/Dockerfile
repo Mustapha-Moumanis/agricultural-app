@@ -5,9 +5,11 @@ WORKDIR /code
 
 RUN pip install --upgrade pip 
 
-COPY ./src/. /code/
+COPY ./src/requirements.txt /code/
 
 RUN pip install -r requirements.txt
+
+COPY ./src/. /code/
 
 EXPOSE 8000
 
