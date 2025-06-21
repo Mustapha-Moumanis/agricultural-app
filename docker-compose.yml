@@ -30,19 +30,19 @@ services:
 
 
 
-    # frontend:
-    #     container_name: frontend
-    #     build: ./frontend
-    #     image: frontend
-    #     restart: on-failure
-    #     ports:
-    #         - "3000:3000"
-    #     networks:
-    #         - agricultural-network
-    #     volumes:
-    #         - ./frontend/app:/app/
-    #         - /app/node_modules
-    #         # - media:/app/static
+    frontend:
+        container_name: frontend
+        build: ./frontend
+        image: frontend
+        restart: on-failure
+        ports:
+            - "3000:3000"
+        networks:
+            - agricultural-network
+        volumes:
+            - ./frontend/app:/app/
+            - /app/node_modules
+            # - media:/app/static
     
     backend:
         container_name: backend

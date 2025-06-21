@@ -11,24 +11,29 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from datetime import timedelta
 import os
+import environ
 
 # from allauth.account.app_settings import AuthenticationMethod
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+env = environ.Env(DEBUG=(bool, False))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-2i1ezm_l^uhxrigdc*r^7qolgoj^9x$va@q4jxh1o2a_ixio5^"
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 
 # Application definition
@@ -50,6 +55,8 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'dj_rest_auth.registration',
+
+    # 'rest_framework_simplejwt',
 
     'users',
 ]
@@ -93,10 +100,11 @@ WSGI_APPLICATION = "app.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": env.db()
+    # "default": {
+    #     "ENGINE": "django.db.backends.sqlite3",
+    #     "NAME": BASE_DIR / "db.sqlite3",
+    # }
 }
 
 
@@ -138,16 +146,34 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [os.path.join(BASE_DIR,"static")]
 
 REST_AUTH = {
-    # 'USE_JWT': True,
-    # # 'SESSION_LOGIN': False,
-    # 'JWT_AUTH_COOKIE': 'my-app-auth',
-    # 'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
+    'USE_JWT': True,
+    # 'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': 'my-token',
+    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
+
+    # To tell the browser not to send this cookie when performing a cross-origin request.
+    # 'JWT_AUTH_SAMESITE': 'None',
+
+    # # If set to True, the client-side JavaScript will not be able to access the cookie.
+    'JWT_AUTH_HTTPONLY': False,
+
     'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
+    'USER_DETAILS_SERIALIZER': 'users.serializers.MyUserDetailsSerializer',
     'PASSWORD_RESET_SERIALIZER': "users.serializers.MyPasswordResetSerializer",
     'PASSWORD_RESET_CONFIRM_SERIALIZER': "users.serializers.MyPasswordResetConfirmSerializer",
-    # 'DEFAULT_AUTHENTICATION_CLASSES': (
-    #     'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
-    # )
+    'PASSWORD_RESET_USE_SITES_DOMAIN':True,
+    'OLD_PASSWORD_FIELD_ENABLED': True,
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+    )
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 AUTHENTICATION_BACKENDS = [
@@ -156,21 +182,34 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+# EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
+# EMAIL_HOST_USER = 'ba71e5eb990846'
+# EMAIL_HOST_PASSWORD = 'aeef454c84d374'
+# EMAIL_PORT = '2525'
+
+# EMAIL_HOST = config('EMAIL_HOST')
+# EMAIL_USE_TLS = True
+# EMAIL_PORT = config('EMAIL_PORT', cast=int)
+# EMAIL_HOST_USER = config('EMAIL_USER')
+# EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
+# django.core.mail.backends.console.emailbackend
+EMAIL_CONFIG = env.email(
+    'EMAIL_URL',
+    default='smtp://user:password@localhost:25'
+)
+vars().update(EMAIL_CONFIG)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*', 'role*']
-
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
-# ACCOUNT_USER_MODEL_USERNAME_FIELD = None
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
-# ACCOUNT_USERNAME_REQUIRED = False
 
 ACCOUNT_EMAIL_CONFIRMATION_HMAC = False
 

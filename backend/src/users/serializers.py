@@ -1,8 +1,7 @@
 from rest_framework import serializers
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import PasswordResetSerializer, PasswordResetConfirmSerializer
+from dj_rest_auth.serializers import UserDetailsSerializer, PasswordResetSerializer, PasswordResetConfirmSerializer
 from django.utils.translation import gettext_lazy as _
-# from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from .models import User
 import re
@@ -25,6 +24,47 @@ class CustomRegisterSerializer(RegisterSerializer):
       user.save()
       return user
 
+# User Details
+
+from django.core.validators import URLValidator, ValidationError
+from dateutil.relativedelta import relativedelta
+from datetime import date
+
+class MyUserDetailsSerializer(UserDetailsSerializer):
+	class Meta:
+		model = User
+		fields = ['username', 'email', 'first_name', 'last_name', 'avatar', 'role']
+		read_only_fields = ('email', 'role')
+
+	def validate_username(self, username):
+		pattern = r'^[a-zA-Z][a-zA-Z_-]{0,19}$'
+		if not re.match(pattern, username):
+			raise serializers.ValidationError('invalid username')
+		return username
+
+	def validate_first_name(self, first_name):
+		pattern = r'^[a-zA-Z][a-zA-Z_-]{0,19}$'
+		if not re.match(pattern, first_name):
+			raise serializers.ValidationError('invalid first name')
+		return first_name
+
+	def validate_last_name(self, last_name):
+		pattern = r'^[a-zA-Z][a-zA-Z_-]{0,19}$'
+		if not re.match(pattern, last_name):
+			raise serializers.ValidationError('invalid last name')
+		return last_name
+
+	def to_representation(self, instance):
+		representation = super().to_representation(instance)
+		avatar_field = instance.avatar
+		if avatar_field:
+			try:
+				representation['avatar'] = avatar_field.url
+			except (AttributeError, ValueError):
+				representation['avatar'] = str(avatar_field)
+		else:
+			representation['avatar'] = None
+		return representation
 
 # Password reset
 
@@ -39,9 +79,6 @@ class MyPasswordResetSerializer(PasswordResetSerializer):
 # Password Reset Confirm
 
 from rest_framework.exceptions import ValidationError
-from django.contrib.auth import get_user_model
-
-UserModel = get_user_model()
 
 class MyPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
 	uid = None
@@ -52,8 +89,8 @@ class MyPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
 
 	def validate(self, attrs):
 		try:
-			self.user = UserModel._default_manager.get(email=attrs['email'])
-		except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist):
+			self.user = User._default_manager.get(email=attrs['email'])
+		except (TypeError, ValueError, OverflowError, User.DoesNotExist):
 			raise ValidationError({'email': [_('Invalid value')]})
 		if not check_password(attrs['token'], self.user.reset_password_pin):
 			raise ValidationError({'token': [_('Invalid value')]})
