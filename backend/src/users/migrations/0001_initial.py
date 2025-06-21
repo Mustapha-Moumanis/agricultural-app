@@ -95,7 +95,7 @@ class Migration(migrations.Migration):
                 (
                     "role",
                     models.CharField(
-                        choices=[("AGRONOME", "Agronome"), ("FERMIER", "Fermier")],
+                        choices=[("FERMIER", "Fermier"), ("AGRONOME", "Agronome")],
                         default="FERMIER",
                         max_length=20,
                     ),

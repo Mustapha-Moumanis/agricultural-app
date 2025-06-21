@@ -1,0 +1,9 @@
+Django==5.2.3
+dj-rest-auth==7.0.1
+django-allauth==65.2.0
+djangorestframework==3.16.0
+djangorestframework_simplejwt==5.5.0
+django-cors-headers==4.4.0
+psycopg2-binary==2.9.9
+requests==2.32.3
+pillow==11.2.1
