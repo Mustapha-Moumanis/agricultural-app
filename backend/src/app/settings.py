@@ -35,6 +35,9 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
+CORS_ALLOWED_ORIGINS = env.list("ALLOWED_HOSTS", default=[])
+
+# CSRF_TRUSTED_ORIGINS = env.list("ALLOWED_HOSTS", default=[])
 
 # Application definition
 
