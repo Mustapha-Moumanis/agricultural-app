@@ -19,8 +19,8 @@ def GenerateDefaultImagePath():
 
 class User(AbstractUser):
     class Roles(models.TextChoices):
-        FERMIER = "FERMIER", "Fermier"
-        AGRONOME = "AGRONOME", "Agronome"
+        Farmer = "Farmer", "Farmer"
+        Agronomist = "Agronomist", "Agronomist"
     
     avatar = models.ImageField(upload_to=GenerateProfileImagePath, max_length=200, default=GenerateDefaultImagePath)
     reset_password_pin = models.CharField(max_length=256, null=True, blank=True)
@@ -28,5 +28,5 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=20,
         choices=Roles.choices,
-        default=Roles.FERMIER
+        default=Roles.Farmer
     )
