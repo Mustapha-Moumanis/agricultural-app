@@ -1,20 +1,20 @@
 export interface User {
   id: string
-  name: string
+  username: string
   email: string
-  role: "agronomist" | "farmer"
+  role: "Agronomist" | "Farmer"
   avatar?: string
-  location?: string
-  farmLocation?: {
-    lat: number
-    lng: number
-    address: string
-  }
-  bio?: string
-  phone?: string
-  specialization?: string
-  cropTypes?: string[]
 }
+// location?: string
+// farmLocation?: {
+//   lat: number
+//   lng: number
+//   address: string
+// }
+// bio?: string
+// phone?: string
+// specialization?: string
+// cropTypes?: string[]
 
 export interface Alert {
   id: string

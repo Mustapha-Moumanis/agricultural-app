@@ -1,38 +1,55 @@
 "use client"
 
-import type { User } from "@/types"
+import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { LogOut, User } from "lucide-react"
 
-interface AgronomistDashboardProps {
-  user: User
-  onLogout: () => void
-  onUpdateUser: (updates: Partial<User>) => void
-}
+export function AgronomistDashboard() {
+  const { user, logout } = useAuth()
 
-export function AgronomistDashboard({ user, onLogout, onUpdateUser }: AgronomistDashboardProps) {
-  
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error("Logout failed:", error)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-background transition-colors">
-        AgronomistDashboard
-        {user.name}
-        <button onClick={onLogout} className="p-2 bg-red-500 text-white rounded">
-          Logout
-        </button>
-        <button onClick={() => onUpdateUser({ name: "Updated Name" })} className="p-2 bg-blue-500 text-white rounded ml-2">
-          Update Name
-        </button>
-        <div className="mt-4">
-          <h2 className="text-xl font-bold">User Details</h2>
-          <p><strong>Name:</strong> {user.name}</p>
-          <p><strong>Email:</strong> {user.email}</p>
-          <p><strong>Role:</strong> {user.role}</p>
-          {user.location && <p><strong>Location:</strong> {user.location}</p>}
-          {user.farmLocation && (
-            <div>
-              <p><strong>Farm Location:</strong></p>
-              <p>Address: {user.farmLocation.address}</p>
-              <p>Coordinates: {user.farmLocation.lat}, {user.farmLocation.lng}</p>
-            </div>
-          )}
+    <div className="min-h-screen bg-background transition-colors p-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Agronomist Dashboard</h1>
+          <Button onClick={handleLogout} variant="outline" className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
         </div>
-    </div>)
+
+        <div className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Profile Information
+              </CardTitle>
+              <CardDescription>Your account details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p>
+                <strong>Name:</strong> {user?.username}
+              </p>
+              <p>
+                <strong>Email:</strong> {user?.email}
+              </p>
+              <p>
+                <strong>Role:</strong> {user?.role}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
 }

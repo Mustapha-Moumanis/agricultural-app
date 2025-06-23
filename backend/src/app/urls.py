@@ -29,8 +29,9 @@ urlpatterns = [
     # Authentication
     path('auth/', include('dj_rest_auth.urls')),
     path('auth/registration/', include('dj_rest_auth.registration.urls')),
+    path('', include('users.urls')),
 
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
 ]

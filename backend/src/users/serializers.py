@@ -1,11 +1,14 @@
 from rest_framework import serializers
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import UserDetailsSerializer, PasswordResetSerializer, PasswordResetConfirmSerializer
+from dj_rest_auth.serializers import LoginSerializer, UserDetailsSerializer, PasswordResetSerializer, PasswordResetConfirmSerializer
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.hashers import check_password
 from .models import User
 import re
 
+# Login
+class CustomLoginSerializer(LoginSerializer):
+	username = None
 
 # Register
 from allauth.account.adapter import get_adapter
@@ -17,7 +20,7 @@ class CustomRegisterSerializer(RegisterSerializer):
     This serializer extends the default RegisterSerializer to include additional fields.
     """
 
-    role = serializers.ChoiceField(choices=["FERMIER", "AGRONOME"])
+    role = serializers.ChoiceField(choices=["Farmer", "Agronomist"])
       
     def custom_signup(self, request, user):
       user.role = self.validated_data.get('role')
@@ -65,6 +68,12 @@ class MyUserDetailsSerializer(UserDetailsSerializer):
 		else:
 			representation['avatar'] = None
 		return representation
+
+# Verify Email
+
+class CustomVerifyEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    key = serializers.CharField()
 
 # Password reset
 

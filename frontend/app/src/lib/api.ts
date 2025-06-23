@@ -2,15 +2,16 @@ import api from "./axios"
 import type { User } from "@/types"
 
 export class ApiError extends Error {
-  public status: number;
+  public response?: any
 
   constructor(
-    status: number,
+    public status: number,
     message: string,
+    response?: any,
   ) {
     super(message)
     this.name = "ApiError"
-    this.status = status;
+    this.response = response
   }
 }
 
@@ -21,63 +22,98 @@ export const authApi = {
       const response = await api.post("/auth/login", { email, password })
       return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Login failed")
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || "Login failed",
+        error.response,
+      )
     }
   },
 
   register: async (userData: {
-    name: string
+    username: string
     email: string
-    password: string
-    role: "farmer" | "agronomist"
-    location: string
+    password1: string
+    password2: string
+    role: "Farmer" | "Agronomist"
   }) => {
     try {
-      const response = await api.post("/auth/register", userData)
+      const response = await api.post("/auth/registration/", userData)
       return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Registration failed")
+      const apiError = new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || "Registration failed",
+        error.response,
+      )
+      throw apiError
     }
   },
 
   logout: async () => {
     try {
-      const refreshToken = localStorage.getItem("cropalert-refresh-token")
-      const response = await api.post("/auth/logout", {
-        refresh_token: refreshToken,
-      })
+      const response = await api.post("/auth/logout/")
       return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Logout failed")
+      throw new ApiError(error.response?.status || 500, error.response?.data?.detail || "Logout failed", error.response)
     }
   },
 
   refreshToken: async (refreshToken: string) => {
     try {
-      const response = await api.post("/auth/refresh", {
-        refresh_token: refreshToken,
+      const response = await api.post("/auth/token/refresh/", {
+        refresh: refreshToken,
       })
       return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Token refresh failed")
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Token refresh failed",
+        error.response,
+      )
     }
   },
 
   getCurrentUser: async (): Promise<User> => {
     try {
-      const response = await api.get("/auth/me")
-      return response.data.user || response.data
+      const response = await api.get("/auth/user/")
+      return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to get user data")
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to get user data",
+        error.response,
+      )
     }
   },
 
-  verifyEmail: async (token: string) => {
+  verifyEmail: async (email: string, key: string) => {
     try {
-      const response = await api.post("/auth/verify-email", { token })
+      const response = await api.post("/auth/verify-email/", {
+        email,
+        key,
+      })
       return response.data
     } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Email verification failed")
+      console.log(error)
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Email verification failed",
+        error.response
+      )
+    }
+  },
+
+  resendEmailVerification: async (email: string) => {
+    try {
+      const response = await api.post("/auth/registration/resend-email/", { email })
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to resend verification email",
+        error.response,
+      )
     }
   },
 
@@ -91,7 +127,7 @@ export const authApi = {
       }
 
       // Try to get current user to verify token validity
-      await authApi.getCurrentUser()
+      // await authApi.getCurrentUser()
       return true
     } catch (error) {
       // If getCurrentUser fails, try to refresh token
@@ -113,34 +149,36 @@ export const authApi = {
   },
 }
 
-// Other API functions
-export const alertsApi = {
-  getAlerts: async () => {
-    try {
-      const response = await api.get("/api/alerts")
-      return response.data
-    } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to fetch alerts")
-    }
-  },
+// // Other API functions
+// export const alertsApi = {
+//   getAlerts: async () => {
+//     try {
+//       const response = await api.get("/api/alerts")
+//       return response.data
+//     } catch (error: any) {
+//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to fetch alerts")
+//     }
+//   },
 
-  createAlert: async (alertData: any) => {
-    try {
-      const response = await api.post("/api/alerts", alertData)
-      return response.data
-    } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to create alert")
-    }
-  },
-}
+//   createAlert: async (alertData: any) => {
+//     try {
+//       const response = await api.post("/api/alerts", alertData)
+//       return response.data
+//     } catch (error: any) {
+//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to create alert")
+//     }
+//   },
+// }
 
-export const userApi = {
-  updateProfile: async (userData: Partial<User>) => {
-    try {
-      const response = await api.put("/api/user/profile", userData)
-      return response.data
-    } catch (error: any) {
-      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to update profile")
-    }
-  },
-}
+// export const userApi = {
+//   updateProfile: async (userData: Partial<User>) => {
+//     try {
+//       const response = await api.put("/api/user", userData)
+//       return response.data
+//     } catch (error: any) {
+//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to update profile")
+//     }
+//   },
+// }
+
+

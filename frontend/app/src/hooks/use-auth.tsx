@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, createContext, useContext, type ReactNode } from "react"
+import { useState, useEffect, createContext, useContext, useCallback, type ReactNode } from "react"
 import { authApi, ApiError } from "@/lib/api"
 import { toast } from "sonner"
 import type { User } from "@/types"
@@ -8,7 +8,7 @@ import type { User } from "@/types"
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<void>
-  register: (userData: RegisterData) => Promise<void>
+  register: (userData: RegisterData) => Promise<any>
   logout: () => Promise<void>
   isLoading: boolean
   isAuthenticated: boolean
@@ -16,11 +16,11 @@ interface AuthContextType {
 }
 
 interface RegisterData {
-  name: string
+  username: string
   email: string
-  password: string
-  role: "farmer" | "agronomist"
-  location: string
+  password1: string
+  password2: string
+  role: "Farmer" | "Agronomist"
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  const checkAuth = async (): Promise<boolean> => {
+  const checkAuth = useCallback(async (): Promise<boolean> => {
     try {
       const isAuth = await authApi.checkAuthStatus()
       if (isAuth) {
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(false)
       return false
     }
-  }
+  }, [])
 
   useEffect(() => {
     const initializeAuth = async () => {
@@ -59,18 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     initializeAuth()
-  }, [])
+  }, [checkAuth])
 
   const login = async (email: string, password: string) => {
     try {
       const response = await authApi.login(email, password)
 
-      // Store tokens
-      if (response.access_token) {
-        localStorage.setItem("cropalert-access-token", response.access_token)
+      // Store tokens (dj-rest-auth typically returns access and refresh tokens)
+      if (response.access_token || response.access) {
+        localStorage.setItem("cropalert-access-token", response.access_token || response.access)
       }
-      if (response.refresh_token) {
-        localStorage.setItem("cropalert-refresh-token", response.refresh_token)
+      if (response.refresh_token || response.refresh) {
+        localStorage.setItem("cropalert-refresh-token", response.refresh_token || response.refresh)
       }
 
       // Set user data
@@ -84,11 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
     } catch (error) {
       console.error("Login error:", error)
-      // if (error instanceof ApiError) {
-      //   throw new Error(error.message)
-      // }
-      if (error instanceof Error) {
-        throw new Error(error.message)
+      if (error instanceof ApiError) {
+        throw error
       }
       throw new Error("Login failed. Please try again.")
     }
@@ -101,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Registration error:", error)
       if (error instanceof ApiError) {
-        throw new Error(error.message)
+        throw error
       }
       throw new Error("Registration failed. Please try again.")
     }

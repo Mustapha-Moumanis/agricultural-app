@@ -31,7 +31,7 @@ function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>{user?.role === "agronomist" ? <AgronomistDashboard /> : <FarmerDashboard />}</ProtectedRoute>
+          <ProtectedRoute>{user?.role === "Agronomist" ? <AgronomistDashboard /> : <FarmerDashboard />}</ProtectedRoute>
         }
       />
       <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />

@@ -35,7 +35,7 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
-CORS_ALLOWED_ORIGINS = env.list("ALLOWED_HOSTS", default=[])
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 # CSRF_TRUSTED_ORIGINS = env.list("ALLOWED_HOSTS", default=[])
 
@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework.authtoken',
+    'corsheaders',
     'dj_rest_auth',
 
     'django.contrib.sites',
@@ -67,6 +68,7 @@ INSTALLED_APPS = [
 SITE_ID = 1
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -150,9 +152,9 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR,"static")]
 
 REST_AUTH = {
     'USE_JWT': True,
-    # 'SESSION_LOGIN': False,
-    'JWT_AUTH_COOKIE': 'my-token',
-    'JWT_AUTH_REFRESH_COOKIE': 'my-refresh-token',
+    'SESSION_LOGIN': False,
+    'JWT_AUTH_COOKIE': 'cropalert-access-token',
+    'JWT_AUTH_REFRESH_COOKIE': 'cropalert-refresh-token',
 
     # To tell the browser not to send this cookie when performing a cross-origin request.
     # 'JWT_AUTH_SAMESITE': 'None',
@@ -160,6 +162,7 @@ REST_AUTH = {
     # # If set to True, the client-side JavaScript will not be able to access the cookie.
     'JWT_AUTH_HTTPONLY': False,
 
+    'LOGIN_SERIALIZER': 'users.serializers.CustomLoginSerializer',
     'REGISTER_SERIALIZER': 'users.serializers.CustomRegisterSerializer',
     'USER_DETAILS_SERIALIZER': 'users.serializers.MyUserDetailsSerializer',
     'PASSWORD_RESET_SERIALIZER': "users.serializers.MyPasswordResetSerializer",
