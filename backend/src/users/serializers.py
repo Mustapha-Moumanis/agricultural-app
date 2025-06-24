@@ -36,8 +36,8 @@ from datetime import date
 class MyUserDetailsSerializer(UserDetailsSerializer):
 	class Meta:
 		model = User
-		fields = ['username', 'email', 'first_name', 'last_name', 'avatar', 'role']
-		read_only_fields = ('email', 'role')
+		fields = ['username', 'email', 'first_name', 'last_name', 'avatar', 'role', 'country', 'region', 'city', 'latitude', 'longitude']
+		read_only_fields = ('email', 'role', 'country', 'region', 'city', 'latitude', 'longitude')
 
 	def validate_username(self, username):
 		pattern = r'^[a-zA-Z][a-zA-Z_-]{0,19}$'
@@ -57,17 +57,17 @@ class MyUserDetailsSerializer(UserDetailsSerializer):
 			raise serializers.ValidationError('invalid last name')
 		return last_name
 
-	def to_representation(self, instance):
-		representation = super().to_representation(instance)
-		avatar_field = instance.avatar
-		if avatar_field:
-			try:
-				representation['avatar'] = avatar_field.url
-			except (AttributeError, ValueError):
-				representation['avatar'] = str(avatar_field)
-		else:
-			representation['avatar'] = None
-		return representation
+	# def to_representation(self, instance):
+	# 	representation = super().to_representation(instance)
+	# 	avatar_field = instance.avatar
+	# 	if avatar_field:
+	# 		try:
+	# 			representation['avatar'] = avatar_field.url
+	# 		except (AttributeError, ValueError):
+	# 			representation['avatar'] = str(avatar_field)
+	# 	else:
+	# 		representation['avatar'] = None
+	# 	return representation
 
 # Verify Email
 
@@ -119,3 +119,28 @@ class MyPasswordResetConfirmSerializer(PasswordResetConfirmSerializer):
 
 	def save(self):
 		return self.set_password_form.save()
+
+# User Location
+
+class UserLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['country', 'region', 'city', 'latitude', 'longitude']
+
+
+# from django.contrib.gis.geos import Point
+
+# class UserLocationSerializer(serializers.ModelSerializer):
+#     latitude = serializers.FloatField(write_only=True, required=True)
+#     longitude = serializers.FloatField(write_only=True, required=True)
+
+#     class Meta:
+#         model = User
+#         fields = ['latitude', 'longitude']
+
+#     def update(self, instance, validated_data):
+#         lat = validated_data.pop('latitude')
+#         lng = validated_data.pop('longitude')
+#         instance.location = Point(lng, lat)
+#         instance.save()
+#         return instance

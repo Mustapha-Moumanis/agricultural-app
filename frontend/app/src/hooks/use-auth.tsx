@@ -10,9 +10,12 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   register: (userData: RegisterData) => Promise<any>
   logout: () => Promise<void>
+  updateUser: (userData: Partial<User>) => void
   isLoading: boolean
   isAuthenticated: boolean
   checkAuth: () => Promise<boolean>
+  shouldShowLocationSetup: boolean
+  setShouldShowLocationSetup: (show: boolean) => void
 }
 
 interface RegisterData {
@@ -29,6 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [shouldShowLocationSetup, setShouldShowLocationSetup] = useState(false)
+
+  // Check if user needs location setup
+  const needsLocationSetup = (userData: User): boolean => {
+    return !userData.country || !userData.region || !userData.city
+  }
 
   const checkAuth = useCallback(async (): Promise<boolean> => {
     try {
@@ -37,16 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData = await authApi.getCurrentUser()
         setUser(userData)
         setIsAuthenticated(true)
+
+        // Check if location setup is needed
+        if (needsLocationSetup(userData)) {
+          setShouldShowLocationSetup(true)
+        }
         return true
       } else {
         setUser(null)
         setIsAuthenticated(false)
+        setShouldShowLocationSetup(false)
         return false
       }
     } catch (error) {
       console.error("Auth check failed:", error)
       setUser(null)
       setIsAuthenticated(false)
+      setShouldShowLocationSetup(false)
       return false
     }
   }, [])
@@ -79,6 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(true)
       localStorage.setItem("cropalert-user", JSON.stringify(userData))
 
+      // Check if location setup is needed
+      if (needsLocationSetup(userData)) {
+        setShouldShowLocationSetup(true)
+      }
       toast.success("Welcome back!", {
         description: "You have successfully signed in to CropAlert.",
       })
@@ -114,9 +134,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear all auth data
       setUser(null)
       setIsAuthenticated(false)
+      setShouldShowLocationSetup(false)
       localStorage.removeItem("cropalert-access-token")
       localStorage.removeItem("cropalert-refresh-token")
       localStorage.removeItem("cropalert-user")
+    }
+  }
+
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData }
+      setUser(updatedUser)
+      localStorage.setItem("cropalert-user", JSON.stringify(updatedUser))
+
+      // Check if location setup is still needed
+      if (!needsLocationSetup(updatedUser)) {
+        setShouldShowLocationSetup(false)
+      }
     }
   }
 
@@ -125,9 +159,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
+    updateUser,
     isLoading,
     isAuthenticated,
     checkAuth,
+    shouldShowLocationSetup,
+    setShouldShowLocationSetup,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

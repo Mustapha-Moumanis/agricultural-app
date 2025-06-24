@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     # 'rest_framework_simplejwt',
 
     'users',
+    'alerts',
 ]
 
 SITE_ID = 1
