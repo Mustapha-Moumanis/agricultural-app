@@ -694,17 +694,13 @@
 //     </div>
 //   )
 // }
-
-
 "use client"
 
-import type React from "react"
-
+import React, { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -712,55 +708,33 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { X, MapPin, Send, Eye, Clock, AlertTriangle, Loader2, Camera, Target } from "lucide-react"
-import type { Alert, User } from "@/types"
+import { X, Send, Eye, Clock, AlertTriangle, Loader2, Target } from "lucide-react"
 import { alertsApi } from "@/lib/api"
 
 const AlertFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   cropType: z.string().min(1, "Please select a crop type"),
   category: z.string().min(1, "Please select an alert category"),
-  severity: z.enum(["low", "medium", "high", "critical"]),
+  severity: z.enum(["Low", "Medium", "High", "Critical"]),
   description: z.string().min(20, "Description must be at least 20 characters"),
-  contactPhone: z.string().optional(),
-  contactEmail: z.string().email().optional().or(z.literal("")),
   validityPeriod: z.string().min(1, "Please select validity period"),
-  location: z.string().min(1, "Location is required"),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
   radius: z.number().min(500).max(50000),
 })
 
 interface AlertCreationFormProps {
   onClose: () => void
-  onSuccess?: (alert: Alert) => void
-  user: User
+  onSuccess?: (alert: any) => void
 }
 
 const cropTypes = [
-  "Wheat",
-  "Corn",
-  "Rice",
-  "Soybeans",
-  "Tomatoes",
-  "Potatoes",
-  "Cotton",
-  "Barley",
-  "Oats",
-  "Sorghum",
-  "Sunflower",
-  "Canola",
-  "Sugar Beet",
-  "Alfalfa",
-  "Lettuce",
-  "Carrots",
-  "Onions",
-  "Peppers",
-  "Cucumbers",
-  "Beans",
-  "Peas",
-  "Spinach",
+  "Wheat", "Corn", "Rice", "Soybeans", "Tomatoes", "Potatoes", "Cotton",
+  "Barley", "Oats", "Sorghum", "Sunflower", "Canola", "Sugar Beet", "Alfalfa",
+  "Lettuce", "Carrots", "Onions", "Peppers", "Cucumbers", "Beans", "Peas", "Spinach",
 ]
 
-const alertCategories = [
+export const alertCategories = [
   { value: "pest", label: "Pest Outbreak", icon: "🐛", color: "bg-red-100 text-red-800" },
   { value: "disease", label: "Plant Disease", icon: "🦠", color: "bg-orange-100 text-orange-800" },
   { value: "weather", label: "Weather Alert", icon: "🌪️", color: "bg-blue-100 text-blue-800" },
@@ -769,11 +743,11 @@ const alertCategories = [
   { value: "advisory", label: "Advisory", icon: "💡", color: "bg-yellow-100 text-yellow-800" },
 ]
 
-const severityLevels = [
-  { value: "low", label: "Low", color: "bg-green-500", textColor: "text-green-700" },
-  { value: "medium", label: "Medium", color: "bg-yellow-500", textColor: "text-yellow-700" },
-  { value: "high", label: "High", color: "bg-orange-500", textColor: "text-orange-700" },
-  { value: "critical", label: "Critical", color: "bg-red-500", textColor: "text-red-700" },
+export const severityLevels = [
+  { value: "Low", label: "Low", color: "bg-green-500" },
+  { value: "Medium", label: "Medium", color: "bg-yellow-500" },
+  { value: "High", label: "High", color: "bg-orange-500" },
+  { value: "Critical", label: "Critical", color: "!bg-red-500" },
 ]
 
 const radiusOptions = [
@@ -783,11 +757,17 @@ const radiusOptions = [
   { value: 25000, label: "25km" },
 ]
 
-export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFormProps) {
+const validityPeriods = [
+  { value: "1d", label: "1 Day" },
+  { value: "3d", label: "3 Days" },
+  { value: "1w", label: "1 Week" },
+  { value: "2w", label: "2 Weeks" },
+  { value: "1m", label: "1 Month" },
+]
+
+export function AlertCreationForm({ onClose, onSuccess }: AlertCreationFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  const [images, setImages] = useState<string[]>([])
-  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([])
   const [isGettingLocation, setIsGettingLocation] = useState(false)
 
   const form = useForm<z.infer<typeof AlertFormSchema>>({
@@ -796,44 +776,14 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
       title: "",
       cropType: "",
       category: "",
-      severity: "medium",
+      severity: "Medium",
       description: "",
-      validityPeriod: "1d",
+      validityPeriod: "1w",
+      latitude: 0,
+      longitude: 0,
       radius: 5000,
     },
   })
-
-  // Auto-save draft
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const formData = form.getValues()
-      if (formData.title || formData.description) {
-        localStorage.setItem("alert-draft", JSON.stringify(formData))
-      }
-    }, 30000)
-    return () => clearInterval(interval)
-  }, [form])
-
-  // Smart location suggestions
-  const handleLocationSearch = async (query: string) => {
-    if (query.length < 3) return
-
-    try {
-      // Mock location suggestions - in real app, use geocoding API
-  //      country?: string
-  //      region?: string
-  //      city?: string
-      const suggestions = [
-        `${query}`,
-        `${query} Farm`,
-        `${query} Agricultural District`,
-        `Near ${query}`,
-      ]
-      setLocationSuggestions(suggestions)
-    } catch (error) {
-      console.error("Location search failed:", error)
-    }
-  }
 
   const getCurrentLocation = async () => {
     setIsGettingLocation(true)
@@ -846,57 +796,68 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
       })
 
       const { latitude, longitude } = position.coords
-
-      // Use reverse geocoding to get readable address
-      const address = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-      form.setValue("location", address)
-
+      form.setValue("latitude", latitude)
+      form.setValue("longitude", longitude)
       toast.success("Location detected successfully!")
     } catch (error) {
-      toast.error("Could not get location. Please enter manually.")
+      toast.error("Could not get location. Please enter coordinates manually.")
     } finally {
       setIsGettingLocation(false)
     }
   }
 
-  async function onSubmit(data: z.infer<typeof AlertFormSchema>) {
+  const handleSubmit = async (data: z.infer<typeof AlertFormSchema>) => {
     setIsLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      const alertData: Alert = {
-        id: Date.now().toString(),
+      const alertData = {
         title: data.title,
         description: data.description,
         crop: data.cropType,
-        location: data.location,
-        latitude: 40.7128,
-        longitude: -74.006,
-        severity: (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) as any,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        severity: data.severity,
         date: new Date().toISOString().split("T")[0],
-        author: user.username,
+        // date: '2025-06-03',
         category: data.category,
         radius: data.radius,
       }
-      
+
+
       const newAlert = await alertsApi.createAlert(alertData)
-
+      
       toast.success("Alert published successfully!", {
-        description: `Alert ID: ${newAlert.id}`,
-      }) 
-      localStorage.removeItem("alert-draft")
-
-      toast.success("Alert published successfully!", {
-        description: "Farmers in your area will be notified.",
+        description: `Alert ID: ${newAlert.id} - Farmers in your area will be notified.`,
       })
 
       onSuccess?.(newAlert)
       onClose()
-    } catch (error) {
-      toast.error("Failed to publish alert")
+    } catch (error: any) {
+      let errorMessage = "Failed to publish alert"
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error("Failed to publish alert", {
+        description: errorMessage
+      })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const onSubmit = async () => {
+    const isValid = await form.trigger()
+    
+    if (isValid) {
+      const formData = form.getValues()
+      await handleSubmit(formData)
+    } else {
+      toast.error("Please check the form for errors")
     }
   }
 
@@ -930,32 +891,20 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
 
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span>🌾 {formData.cropType}</span>
-              <span>📍 {formData.location}</span>
+              <span>📍 {formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)}</span>
               <span>📏 {formData.radius / 1000}km radius</span>
+              <span>⏰ Valid for {validityPeriods.find(p => p.value === formData.validityPeriod)?.label}</span>
             </div>
 
             <div className="prose max-w-none">
               <p className="whitespace-pre-wrap">{formData.description}</p>
             </div>
 
-            {images.length > 0 && (
-              <div className="grid grid-cols-2 gap-2">
-                {images.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image || "/placeholder.svg"}
-                    alt={`Alert image ${index + 1}`}
-                    className="rounded-lg object-cover h-32 w-full"
-                  />
-                ))}
-              </div>
-            )}
-
             <div className="flex gap-2 pt-4">
               <Button onClick={() => setShowPreview(false)} variant="outline" className="flex-1">
                 Edit
               </Button>
-              <Button onClick={form.handleSubmit(onSubmit)} className="flex-1" disabled={isLoading}>
+              <Button onClick={() => handleSubmit(form.getValues())} className="flex-1" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                 Publish Alert
               </Button>
@@ -983,7 +932,7 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
 
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="space-y-6">
               {/* Quick Setup */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -993,7 +942,7 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                     <FormItem>
                       <FormLabel>Crop Type *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl className="w-full">
+                        <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select crop" />
                           </SelectTrigger>
@@ -1018,7 +967,7 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                     <FormItem>
                       <FormLabel>Alert Type *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl  className="w-full">
+                        <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
@@ -1082,66 +1031,68 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                 )}
               />
 
-              {/* Location - Super Easy */}
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location *</FormLabel>
-                    <FormControl>
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
+              {/* Coordinates */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <FormLabel>Location Coordinates *</FormLabel>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={getCurrentLocation}
+                    disabled={isGettingLocation}
+                  >
+                    {isGettingLocation ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Target className="w-4 h-4 mr-2" />
+                    )}
+                    Use GPS
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="latitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Latitude</FormLabel>
+                        <FormControl>
                           <Input
-                            placeholder="Enter location or use GPS"
+                            type="number"
+                            step="any"
+                            placeholder="e.g., 40.7128"
                             {...field}
-                            onChange={(e) => {
-                              field.onChange(e)
-                              handleLocationSearch(e.target.value)
-                            }}
-                            className="flex-1"
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={getCurrentLocation}
-                            disabled={isGettingLocation}
-                          >
-                            {isGettingLocation ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Target className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                        {/* Quick location suggestions */}
-                        {locationSuggestions.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {locationSuggestions.slice(0, 3).map((suggestion, index) => (
-                              <Button
-                                key={index}
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 text-xs"
-                                onClick={() => {
-                                  field.onChange(suggestion)
-                                  setLocationSuggestions([])
-                                }}
-                              >
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {suggestion}
-                              </Button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="longitude"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Longitude</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="any"
+                            placeholder="e.g., -74.0060"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
               {/* Coverage Radius */}
               <FormField
@@ -1188,9 +1139,8 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                 )}
               />
 
-
               {/* Validity Period */}
-              {/*<FormField
+              <FormField
                 control={form.control}
                 name="validityPeriod"
                 render={({ field }) => (
@@ -1214,7 +1164,7 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                     <FormMessage />
                   </FormItem>
                 )}
-              />*/}
+              />
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-6 border-t">
@@ -1225,15 +1175,562 @@ export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFor
                   <Eye className="w-4 h-4 mr-2" />
                   Preview
                 </Button>
-                <Button type="submit" className="flex-1" disabled={isLoading}>
+                <Button 
+                  type="button" 
+                  className="flex-1" 
+                  disabled={isLoading}
+                  onClick={onSubmit}
+                >
                   {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                   Publish Alert
                 </Button>
               </div>
-            </form>
+            </div>
           </Form>
         </CardContent>
       </Card>
     </div>
   )
 }
+
+// "use client"
+
+// import type React from "react"
+
+// import { zodResolver } from "@hookform/resolvers/zod"
+// import { useForm } from "react-hook-form"
+// import { toast } from "sonner"
+// import { z } from "zod"
+// import { useState, useEffect } from "react"
+// import { Button } from "@/components/ui/button"
+// import { Input } from "@/components/ui/input"
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+// import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// import { Badge } from "@/components/ui/badge"
+// import { Textarea } from "@/components/ui/textarea"
+// import { X, MapPin, Send, Eye, Clock, AlertTriangle, Loader2, Camera, Target } from "lucide-react"
+// import type { Alert, User } from "@/types"
+// import { alertsApi } from "@/lib/api"
+
+// const AlertFormSchema = z.object({
+//   title: z.string().min(5, "Title must be at least 5 characters"),
+//   cropType: z.string().min(1, "Please select a crop type"),
+//   category: z.string().min(1, "Please select an alert category"),
+//   severity: z.enum(["low", "medium", "high", "critical"]),
+//   description: z.string().min(20, "Description must be at least 20 characters"),
+//   contactPhone: z.string().optional(),
+//   contactEmail: z.string().email().optional().or(z.literal("")),
+//   validityPeriod: z.string().min(1, "Please select validity period"),
+//   location: z.string().min(1, "Location is required"),
+//   radius: z.number().min(500).max(50000),
+// })
+
+// interface AlertCreationFormProps {
+//   onClose: () => void
+//   onSuccess?: (alert: Alert) => void
+//   user: User
+// }
+
+// const cropTypes = [
+//   "Wheat",
+//   "Corn",
+//   "Rice",
+//   "Soybeans",
+//   "Tomatoes",
+//   "Potatoes",
+//   "Cotton",
+//   "Barley",
+//   "Oats",
+//   "Sorghum",
+//   "Sunflower",
+//   "Canola",
+//   "Sugar Beet",
+//   "Alfalfa",
+//   "Lettuce",
+//   "Carrots",
+//   "Onions",
+//   "Peppers",
+//   "Cucumbers",
+//   "Beans",
+//   "Peas",
+//   "Spinach",
+// ]
+
+// const alertCategories = [
+//   { value: "pest", label: "Pest Outbreak", icon: "🐛", color: "bg-red-100 text-red-800" },
+//   { value: "disease", label: "Plant Disease", icon: "🦠", color: "bg-orange-100 text-orange-800" },
+//   { value: "weather", label: "Weather Alert", icon: "🌪️", color: "bg-blue-100 text-blue-800" },
+//   { value: "harvest", label: "Harvest Ready", icon: "🌾", color: "bg-green-100 text-green-800" },
+//   { value: "equipment", label: "Equipment Share", icon: "🚜", color: "bg-purple-100 text-purple-800" },
+//   { value: "advisory", label: "Advisory", icon: "💡", color: "bg-yellow-100 text-yellow-800" },
+// ]
+
+// const severityLevels = [
+//   { value: "low", label: "Low", color: "bg-green-500", textColor: "text-green-700" },
+//   { value: "medium", label: "Medium", color: "bg-yellow-500", textColor: "text-yellow-700" },
+//   { value: "high", label: "High", color: "bg-orange-500", textColor: "text-orange-700" },
+//   { value: "critical", label: "Critical", color: "bg-red-500", textColor: "text-red-700" },
+// ]
+
+// const radiusOptions = [
+//   { value: 1000, label: "1km" },
+//   { value: 5000, label: "5km" },
+//   { value: 10000, label: "10km" },
+//   { value: 25000, label: "25km" },
+// ]
+
+// export function AlertCreationForm({ onClose, onSuccess, user }: AlertCreationFormProps) {
+//   const [isLoading, setIsLoading] = useState(false)
+//   const [showPreview, setShowPreview] = useState(false)
+//   const [images, setImages] = useState<string[]>([])
+//   const [locationSuggestions, setLocationSuggestions] = useState<string[]>([])
+//   const [isGettingLocation, setIsGettingLocation] = useState(false)
+
+//   const form = useForm<z.infer<typeof AlertFormSchema>>({
+//     resolver: zodResolver(AlertFormSchema),
+//     defaultValues: {
+//       title: "",
+//       cropType: "",
+//       category: "",
+//       severity: "medium",
+//       description: "",
+//       validityPeriod: "1d",
+//       radius: 5000,
+//     },
+//   })
+
+//   // Auto-save draft
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       const formData = form.getValues()
+//       if (formData.title || formData.description) {
+//         localStorage.setItem("alert-draft", JSON.stringify(formData))
+//       }
+//     }, 30000)
+//     return () => clearInterval(interval)
+//   }, [form])
+
+//   // Smart location suggestions
+//   const handleLocationSearch = async (query: string) => {
+//     if (query.length < 3) return
+
+//     try {
+//       // Mock location suggestions - in real app, use geocoding API
+//   //      country?: string
+//   //      region?: string
+//   //      city?: string
+//       const suggestions = [
+//         `${query}`,
+//         `${query} Farm`,
+//         `${query} Agricultural District`,
+//         `Near ${query}`,
+//       ]
+//       setLocationSuggestions(suggestions)
+//     } catch (error) {
+//       console.error("Location search failed:", error)
+//     }
+//   }
+
+//   const getCurrentLocation = async () => {
+//     setIsGettingLocation(true)
+//     try {
+//       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+//         navigator.geolocation.getCurrentPosition(resolve, reject, {
+//           enableHighAccuracy: true,
+//           timeout: 10000,
+//         })
+//       })
+
+//       const { latitude, longitude } = position.coords
+
+//       // Use reverse geocoding to get readable address
+//       const address = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+//       form.setValue("location", address)
+
+//       toast.success("Location detected successfully!")
+//     } catch (error) {
+//       toast.error("Could not get location. Please enter manually.")
+//     } finally {
+//       setIsGettingLocation(false)
+//     }
+//   }
+
+//   async function onSubmit(data: z.infer<typeof AlertFormSchema>) {
+//     setIsLoading(true)
+
+//     try {
+//       await new Promise((resolve) => setTimeout(resolve, 2000))
+
+//       const alertData: Alert = {
+//         id: Date.now().toString(),
+//         title: data.title,
+//         description: data.description,
+//         crop: data.cropType,
+//         location: data.location,
+//         latitude: 40.7128,
+//         longitude: -74.006,
+//         severity: (data.severity.charAt(0).toUpperCase() + data.severity.slice(1)) as any,
+//         date: new Date().toISOString().split("T")[0],
+//         author: user.username,
+//         category: data.category,
+//         radius: data.radius,
+//       }
+      
+//       const newAlert = await alertsApi.createAlert(alertData)
+
+//       toast.success("Alert published successfully!", {
+//         description: `Alert ID: ${newAlert.id}`,
+//       }) 
+//       localStorage.removeItem("alert-draft")
+
+//       toast.success("Alert published successfully!", {
+//         description: "Farmers in your area will be notified.",
+//       })
+
+//       onSuccess?.(newAlert)
+//       onClose()
+//     } catch (error) {
+//       toast.error("Failed to publish alert")
+//     } finally {
+//       setIsLoading(false)
+//     }
+//   }
+
+//   if (showPreview) {
+//     const formData = form.getValues()
+//     const selectedCategory = alertCategories.find((c) => c.value === formData.category)
+//     const selectedSeverity = severityLevels.find((s) => s.value === formData.severity)
+
+//     return (
+//       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+//         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+//           <CardHeader>
+//             <div className="flex items-center justify-between">
+//               <CardTitle>Preview Alert</CardTitle>
+//               <Button variant="ghost" size="icon" onClick={() => setShowPreview(false)}>
+//                 <X className="w-4 h-4" />
+//               </Button>
+//             </div>
+//           </CardHeader>
+//           <CardContent className="space-y-4">
+//             <div className="flex items-center gap-2">
+//               <Badge className={selectedSeverity?.color}>{selectedSeverity?.label.toUpperCase()}</Badge>
+//               {selectedCategory && (
+//                 <Badge variant="outline" className={selectedCategory.color}>
+//                   {selectedCategory.icon} {selectedCategory.label}
+//                 </Badge>
+//               )}
+//             </div>
+
+//             <h3 className="text-xl font-bold">{formData.title}</h3>
+
+//             <div className="flex items-center gap-4 text-sm text-muted-foreground">
+//               <span>🌾 {formData.cropType}</span>
+//               <span>📍 {formData.location}</span>
+//               <span>📏 {formData.radius / 1000}km radius</span>
+//             </div>
+
+//             <div className="prose max-w-none">
+//               <p className="whitespace-pre-wrap">{formData.description}</p>
+//             </div>
+
+//             {images.length > 0 && (
+//               <div className="grid grid-cols-2 gap-2">
+//                 {images.map((image, index) => (
+//                   <img
+//                     key={index}
+//                     src={image || "/placeholder.svg"}
+//                     alt={`Alert image ${index + 1}`}
+//                     className="rounded-lg object-cover h-32 w-full"
+//                   />
+//                 ))}
+//               </div>
+//             )}
+
+//             <div className="flex gap-2 pt-4">
+//               <Button onClick={() => setShowPreview(false)} variant="outline" className="flex-1">
+//                 Edit
+//               </Button>
+//               <Button onClick={form.handleSubmit(onSubmit)} className="flex-1" disabled={isLoading}>
+//                 {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+//                 Publish Alert
+//               </Button>
+//             </div>
+//           </CardContent>
+//         </Card>
+//       </div>
+//     )
+//   }
+
+//   return (
+//     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+//       <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+//         <CardHeader>
+//           <div className="flex items-center justify-between">
+//             <div>
+//               <CardTitle>Create New Alert</CardTitle>
+//               <CardDescription>Share important information with farmers in your area</CardDescription>
+//             </div>
+//             <Button variant="ghost" size="icon" onClick={onClose}>
+//               <X className="w-4 h-4" />
+//             </Button>
+//           </div>
+//         </CardHeader>
+
+//         <CardContent>
+//           <Form {...form}>
+//             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+//               {/* Quick Setup */}
+//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                 <FormField
+//                   control={form.control}
+//                   name="cropType"
+//                   render={({ field }) => (
+//                     <FormItem>
+//                       <FormLabel>Crop Type *</FormLabel>
+//                       <Select onValueChange={field.onChange} value={field.value}>
+//                         <FormControl className="w-full">
+//                           <SelectTrigger>
+//                             <SelectValue placeholder="Select crop" />
+//                           </SelectTrigger>
+//                         </FormControl>
+//                         <SelectContent>
+//                           {cropTypes.map((crop) => (
+//                             <SelectItem key={crop} value={crop}>
+//                               {crop}
+//                             </SelectItem>
+//                           ))}
+//                         </SelectContent>
+//                       </Select>
+//                       <FormMessage />
+//                     </FormItem>
+//                   )}
+//                 />
+
+//                 <FormField
+//                   control={form.control}
+//                   name="category"
+//                   render={({ field }) => (
+//                     <FormItem>
+//                       <FormLabel>Alert Type *</FormLabel>
+//                       <Select onValueChange={field.onChange} value={field.value}>
+//                         <FormControl  className="w-full">
+//                           <SelectTrigger>
+//                             <SelectValue placeholder="Select type" />
+//                           </SelectTrigger>
+//                         </FormControl>
+//                         <SelectContent>
+//                           {alertCategories.map((category) => (
+//                             <SelectItem key={category.value} value={category.value}>
+//                               {category.icon} {category.label}
+//                             </SelectItem>
+//                           ))}
+//                         </SelectContent>
+//                       </Select>
+//                       <FormMessage />
+//                     </FormItem>
+//                   )}
+//                 />
+//               </div>
+
+//               {/* Title */}
+//               <FormField
+//                 control={form.control}
+//                 name="title"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Alert Title *</FormLabel>
+//                     <FormControl>
+//                       <Input placeholder="e.g., Urgent: Aphid outbreak in wheat fields" {...field} />
+//                     </FormControl>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />
+
+//               {/* Severity */}
+//               <FormField
+//                 control={form.control}
+//                 name="severity"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Severity Level *</FormLabel>
+//                     <FormControl>
+//                       <div className="grid grid-cols-4 gap-2">
+//                         {severityLevels.map((level) => (
+//                           <Button
+//                             key={level.value}
+//                             type="button"
+//                             variant={field.value === level.value ? "default" : "outline"}
+//                             className={`h-12 ${field.value === level.value ? `${level.color} text-white` : ""}`}
+//                             onClick={() => field.onChange(level.value)}
+//                           >
+//                             <div className="text-center">
+//                               <AlertTriangle className="w-4 h-4 mx-auto mb-1" />
+//                               <div className="text-xs">{level.label}</div>
+//                             </div>
+//                           </Button>
+//                         ))}
+//                       </div>
+//                     </FormControl>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />
+
+//               {/* Location - Super Easy */}
+//               <FormField
+//                 control={form.control}
+//                 name="location"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Location *</FormLabel>
+//                     <FormControl>
+//                       <div className="space-y-2">
+//                         <div className="flex gap-2">
+//                           <Input
+//                             placeholder="Enter location or use GPS"
+//                             {...field}
+//                             onChange={(e) => {
+//                               field.onChange(e)
+//                               handleLocationSearch(e.target.value)
+//                             }}
+//                             className="flex-1"
+//                           />
+//                           <Button
+//                             type="button"
+//                             variant="outline"
+//                             onClick={getCurrentLocation}
+//                             disabled={isGettingLocation}
+//                           >
+//                             {isGettingLocation ? (
+//                               <Loader2 className="w-4 h-4 animate-spin" />
+//                             ) : (
+//                               <Target className="w-4 h-4" />
+//                             )}
+//                           </Button>
+//                         </div>
+
+//                         {/* Quick location suggestions */}
+//                         {locationSuggestions.length > 0 && (
+//                           <div className="flex flex-wrap gap-1">
+//                             {locationSuggestions.slice(0, 3).map((suggestion, index) => (
+//                               <Button
+//                                 key={index}
+//                                 type="button"
+//                                 variant="ghost"
+//                                 size="sm"
+//                                 className="h-8 text-xs"
+//                                 onClick={() => {
+//                                   field.onChange(suggestion)
+//                                   setLocationSuggestions([])
+//                                 }}
+//                               >
+//                                 <MapPin className="w-3 h-3 mr-1" />
+//                                 {suggestion}
+//                               </Button>
+//                             ))}
+//                           </div>
+//                         )}
+//                       </div>
+//                     </FormControl>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />
+
+//               {/* Coverage Radius */}
+//               <FormField
+//                 control={form.control}
+//                 name="radius"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Coverage Area</FormLabel>
+//                     <FormControl>
+//                       <div className="grid grid-cols-4 gap-2">
+//                         {radiusOptions.map((option) => (
+//                           <Button
+//                             key={option.value}
+//                             type="button"
+//                             variant={field.value === option.value ? "default" : "outline"}
+//                             onClick={() => field.onChange(option.value)}
+//                           >
+//                             {option.label}
+//                           </Button>
+//                         ))}
+//                       </div>
+//                     </FormControl>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />
+
+//               {/* Description */}
+//               <FormField
+//                 control={form.control}
+//                 name="description"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Description *</FormLabel>
+//                     <FormControl>
+//                       <Textarea
+//                         placeholder="Describe the situation, symptoms, recommended actions, etc."
+//                         className="min-h-[100px]"
+//                         {...field}
+//                       />
+//                     </FormControl>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />
+
+
+//               {/* Validity Period */}
+//               {/*<FormField
+//                 control={form.control}
+//                 name="validityPeriod"
+//                 render={({ field }) => (
+//                   <FormItem>
+//                     <FormLabel>Valid For</FormLabel>
+//                     <Select onValueChange={field.onChange} value={field.value}>
+//                       <FormControl>
+//                         <SelectTrigger>
+//                           <SelectValue />
+//                         </SelectTrigger>
+//                       </FormControl>
+//                       <SelectContent>
+//                         {validityPeriods.map((period) => (
+//                           <SelectItem key={period.value} value={period.value}>
+//                             <Clock className="w-4 h-4 mr-2 inline" />
+//                             {period.label}
+//                           </SelectItem>
+//                         ))}
+//                       </SelectContent>
+//                     </Select>
+//                     <FormMessage />
+//                   </FormItem>
+//                 )}
+//               />*/}
+
+//               {/* Action Buttons */}
+//               <div className="flex gap-3 pt-6 border-t">
+//                 <Button type="button" variant="outline" onClick={onClose}>
+//                   Cancel
+//                 </Button>
+//                 <Button type="button" variant="outline" onClick={() => setShowPreview(true)}>
+//                   <Eye className="w-4 h-4 mr-2" />
+//                   Preview
+//                 </Button>
+//                 <Button type="submit" className="flex-1" disabled={isLoading}>
+//                   {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+//                   Publish Alert
+//                 </Button>
+//               </div>
+//             </form>
+//           </Form>
+//         </CardContent>
+//       </Card>
+//     </div>
+//   )
+// }

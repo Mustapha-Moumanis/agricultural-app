@@ -1,212 +1,457 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Navigation, ZoomIn, ZoomOut, Layers, MapPin, Home } from "lucide-react"
-import type { Alert, User } from "@/types"
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Navigation,
+  ZoomIn,
+  ZoomOut,
+  Layers,
+  MapPin,
+  Home,WifiOff
+} from "lucide-react";
+import type { Alert, User } from "@/types";
+import { useState, useEffect, useRef, useCallback } from "react"
 
-interface EnhancedMapProps {
-  userRole: "agronomist" | "farmer"
-  user?: User
-  alerts?: Alert[]
+interface Alert {
+  id: string;
+  title: string;
+  description: string;
+  crop: string;
+  latitude: number;
+  longitude: number;
+  severity: "Low" | "Medium" | "High" | "Critical";
+  date: string;
+  author: number;
+  category: string;
+  radius: number;
+  distance?: number;
+  is_within_radius?: boolean;
 }
 
-export function EnhancedMap({ userRole, user, alerts = [] }: EnhancedMapProps) {
-  const mockAlerts: Alert[] = [
-    {
-      id: "1",
-      title: "Aphid Infestation",
-      description: "High aphid activity detected",
-      crop: "Wheat",
-      location: "Northern Valley",
-      coordinates: { lat: 40.7128, lng: -74.006 },
-      severity: "High",
-      date: "2024-01-15",
-      author: "Dr. Sarah Johnson",
-      authorId: "1",
-    },
-    {
-      id: "2",
-      title: "Optimal Planting",
-      description: "Perfect conditions for planting",
-      crop: "Corn",
-      location: "Eastern Plains",
-      coordinates: { lat: 40.7589, lng: -73.9851 },
-      severity: "Medium",
-      date: "2024-01-14",
-      author: "Dr. Mike Chen",
-      authorId: "2",
-    },
-    {
-      id: "3",
-      title: "Fungal Disease",
-      description: "Early signs detected",
-      crop: "Soybeans",
-      location: "Western Fields",
-      coordinates: { lat: 40.6892, lng: -74.0445 },
-      severity: "Medium",
-      date: "2024-01-13",
-      author: "Dr. Emily Rodriguez",
-      authorId: "3",
-    },
-  ]
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: "Farmer" | "Agronomist";
+  country?: string;
+  region?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+interface EnhancedMapProps {
+  userRole: "Agronomist" | "Farmer";
+  user?: User;
+  alerts?: Alert[];
+  onAlertClick?: (alert: Alert) => void;
+  websocketUrl?: string;
+}
+
+export function EnhancedMap({ 
+  userRole, 
+  user, 
+  alerts = [], 
+  onAlertClick,
+  websocketUrl = "ws://localhost:8000/ws/alerts/"
+}: EnhancedMapProps) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersRef = useRef<any[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [currentAlerts, setCurrentAlerts] = useState<Alert[]>(alerts);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
+      case "Critical":
+        return { color: "#dc2626", bgColor: "bg-red-600", textColor: "text-red-800", bgLight: "bg-red-100" };
       case "High":
-        return "bg-red-500 border-red-600 shadow-red-500/50"
+        return { color: "#ea580c", bgColor: "bg-orange-500", textColor: "text-orange-800", bgLight: "bg-orange-100" };
       case "Medium":
-        return "bg-yellow-500 border-yellow-600 shadow-yellow-500/50"
+        return { color: "#ca8a04", bgColor: "bg-yellow-500", textColor: "text-yellow-800", bgLight: "bg-yellow-100" };
       case "Low":
-        return "bg-green-500 border-green-600 shadow-green-500/50"
+        return { color: "#16a34a", bgColor: "bg-green-500", textColor: "text-green-800", bgLight: "bg-green-100" };
       default:
-        return "bg-gray-500 border-gray-600 shadow-gray-500/50"
+        return { color: "#6b7280", bgColor: "bg-gray-500", textColor: "text-gray-800", bgLight: "bg-gray-100" };
     }
-  }
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity) {
+      case "Critical":
+        return "⚠️";
+      case "High":
+        return "🔴";
+      case "Medium":
+        return "🟡";
+      case "Low":
+        return "🟢";
+      default:
+        return "⚪";
+    }
+  };
+
+  // Initialize WebSocket connection
+  const initWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      wsRef.current = new WebSocket(websocketUrl);
+      
+      wsRef.current.onopen = () => {
+        setWsConnected(true);
+        console.log('WebSocket connected');
+        
+        // Request alerts with location if available
+        if (userLocation) {
+          wsRef.current?.send(JSON.stringify({
+            type: 'get_alerts',
+            lat: userLocation.lat,
+            lng: userLocation.lng,
+            radius: 50 // 50km radius
+          }));
+        } else {
+          wsRef.current?.send(JSON.stringify({
+            type: 'get_alerts'
+          }));
+        }
+      };
+
+      wsRef.current.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+          case 'alerts_list':
+            setCurrentAlerts(data.alerts);
+            break;
+          case 'new_alert':
+            setCurrentAlerts(prev => [data.alert, ...prev]);
+            break;
+          case 'alert_updated':
+            setCurrentAlerts(prev => 
+              prev.map(alert => alert.id === data.alert.id ? data.alert : alert)
+            );
+            break;
+          case 'alert_deleted':
+            setCurrentAlerts(prev => 
+              prev.filter(alert => alert.id !== data.alert_id)
+            );
+            break;
+        }
+      };
+
+      wsRef.current.onclose = () => {
+        setWsConnected(false);
+        console.log('WebSocket disconnected');
+        // Attempt to reconnect after 3 seconds
+        setTimeout(initWebSocket, 3000);
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsConnected(false);
+      };
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+      setWsConnected(false);
+    }
+  }, [websocketUrl, userLocation]);
+
+  // Get user's current location
+  useEffect(() => {
+    if (user?.latitude && user?.longitude) {
+      setUserLocation({ lat: user.latitude, lng: user.longitude });
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Default to Casablanca, Morocco
+          setUserLocation({ lat: 33.5731, lng: -7.5898 });
+        }
+      );
+    } else {
+      // Default to Casablanca, Morocco
+      setUserLocation({ lat: 33.5731, lng: -7.5898 });
+    }
+  }, [user]);
+
+  // Initialize WebSocket when component mounts
+  useEffect(() => {
+    initWebSocket();
+    
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [initWebSocket]);
+
+  // Initialize Leaflet map
+  useEffect(() => {
+    if (!mapRef.current || !userLocation) return;
+
+    // Dynamically load Leaflet
+    const loadLeaflet = async () => {
+      if (typeof window !== 'undefined' && !window.L) {
+        // Load Leaflet CSS
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+
+        // Load Leaflet JS
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => {
+          initMap();
+        };
+        document.head.appendChild(script);
+      } else if (window.L) {
+        initMap();
+      }
+    };
+
+    const initMap = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
+
+      const map = window.L.map(mapRef.current).setView([userLocation.lat, userLocation.lng], 10);
+
+      // Add tile layer
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Add user location marker if available
+      if (user?.latitude && user?.longitude) {
+        const userIcon = window.L.divIcon({
+          html: `<div style="background-color: #3b82f6; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+                   <div style="color: white; font-size: 10px;">🏠</div>
+                 </div>`,
+          className: 'custom-user-marker',
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
+
+        window.L.marker([user.latitude, user.longitude], { icon: userIcon })
+          .addTo(map)
+          .bindPopup(`
+            <div class="p-2">
+              <h3 class="font-bold text-sm mb-1">Your Location</h3>
+              <p class="text-xs text-gray-600">${user.city ? `${user.city}, ` : ''}${user.country || 'Your Farm'}</p>
+            </div>
+          `);
+      }
+
+      mapInstanceRef.current = map;
+      setIsMapLoaded(true);
+    };
+
+    loadLeaflet();
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [userLocation, user]);
+
+  // Update markers when alerts change
+  useEffect(() => {
+    if (!mapInstanceRef.current || !isMapLoaded) return;
+
+    // Clear existing markers
+    markersRef.current.forEach(marker => {
+      mapInstanceRef.current.removeLayer(marker);
+    });
+    markersRef.current = [];
+
+    // Add new markers
+    currentAlerts.forEach(alert => {
+      const severityData = getSeverityColor(alert.severity);
+      const icon = getSeverityIcon(alert.severity);
+
+      const customIcon = window.L.divIcon({
+        html: `<div style="background-color: ${severityData.color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; animation: pulse 2s infinite;">
+                 <div style="font-size: 12px;">${icon}</div>
+               </div>`,
+        className: 'custom-alert-marker',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      const marker = window.L.marker([alert.latitude, alert.longitude], { icon: customIcon })
+        .addTo(mapInstanceRef.current);
+
+      const popupContent = `
+        <div class="p-3 min-w-[250px]">
+          <div class="flex items-start justify-between mb-2">
+            <h3 class="font-bold text-sm pr-2">${alert.title}</h3>
+            <span class="px-2 py-1 text-xs rounded-full ${severityData.bgLight} ${severityData.textColor} whitespace-nowrap">
+              ${alert.severity}
+            </span>
+          </div>
+          <p class="text-xs text-gray-600 mb-2">${alert.description}</p>
+          <div class="space-y-1 text-xs">
+            <div><strong>Crop:</strong> ${alert.crop}</div>
+            <div><strong>Category:</strong> ${alert.category}</div>
+            <div><strong>Date:</strong> ${alert.date}</div>
+            <div><strong>Radius:</strong> ${(alert.radius / 1000).toFixed(1)} km</div>
+            ${alert.distance !== undefined ? `<div><strong>Distance:</strong> ${alert.distance} km</div>` : ''}
+          </div>
+        </div>
+      `;
+
+      marker.bindPopup(popupContent);
+      markersRef.current.push(marker);
+    });
+
+    // Global function for alert click handling
+    if (onAlertClick) {
+      (window as any).handleAlertClick = (alertId: string) => {
+        const alert = currentAlerts.find(a => a.id === alertId);
+        if (alert) {
+          onAlertClick(alert);
+        }
+      };
+    }
+  }, [currentAlerts, isMapLoaded, onAlertClick]);
+
+  const handleZoomIn = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomIn();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.zoomOut();
+    }
+  };
+
+  const handleRecenter = () => {
+    if (mapInstanceRef.current && userLocation) {
+      mapInstanceRef.current.setView([userLocation.lat, userLocation.lng], 10);
+    }
+  };
+
+  const handleRefreshAlerts = () => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && userLocation) {
+      wsRef.current.send(JSON.stringify({
+        type: 'get_alerts',
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        radius: 50
+      }));
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {/* Map Container */}
-      <div className="relative h-96 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950 dark:to-blue-950 rounded-xl overflow-hidden border shadow-lg">
-        {/* Animated Background Pattern */}
-        <div className="absolute inset-0 opacity-10 dark:opacity-5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(34,197,94,0.3),transparent_50%)]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.3),transparent_50%)]"></div>
+      {/* Connection Status */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {wsConnected ? (
+            <>
+              <Wifi className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-green-600">Connected</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-4 h-4 text-red-600" />
+              <span className="text-sm text-red-600">Disconnected</span>
+            </>
+          )}
         </div>
+        <div className="text-sm text-muted-foreground">
+          {currentAlerts.length} alert{currentAlerts.length !== 1 ? 's' : ''} shown
+        </div>
+      </div>
 
-        {/* Topographic Lines */}
-        <svg className="absolute inset-0 w-full h-full opacity-20 dark:opacity-10" viewBox="0 0 400 300">
-          <defs>
-            <pattern id="topo" patternUnits="userSpaceOnUse" width="40" height="40">
-              <circle cx="20" cy="20" r="1" fill="currentColor" opacity="0.3" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#topo)" />
-          <path
-            d="M50 50 Q100 30 150 50 T250 70 L300 90 Q350 100 380 120"
-            stroke="currentColor"
-            strokeWidth="1"
-            fill="none"
-            opacity="0.4"
-          />
-          <path
-            d="M20 100 Q80 80 140 100 T240 120 L290 140 Q340 150 370 170"
-            stroke="currentColor"
-            strokeWidth="1"
-            fill="none"
-            opacity="0.4"
-          />
-          <path
-            d="M30 200 Q90 180 150 200 T250 220 L300 240 Q350 250 380 270"
-            stroke="currentColor"
-            strokeWidth="1"
-            fill="none"
-            opacity="0.4"
-          />
-        </svg>
-
-        {/* Farm Location (for farmers) */}
-        {userRole === "farmer" && user?.farmLocation && (
-          <div
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-20"
-            style={{ left: "50%", top: "50%" }}
-          >
-            <div className="relative">
-              <div className="w-8 h-8 bg-blue-600 border-4 border-white rounded-full shadow-lg flex items-center justify-center animate-pulse">
-                <Home className="w-4 h-4 text-white" />
-              </div>
-              <div className="absolute -inset-2 bg-blue-400 rounded-full opacity-30 animate-ping"></div>
-
-              {/* Farm Tooltip */}
-              <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <Card className="w-48 shadow-xl border-blue-200">
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Home className="w-4 h-4 text-blue-600" />
-                      <h4 className="font-medium text-sm">My Farm</h4>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{user.farmLocation.address}</p>
-                    <Badge className="mt-2 bg-blue-100 text-blue-800 text-xs">Your Location</Badge>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Alert Markers */}
-        {mockAlerts.map((alert, index) => (
-          <div
-            key={alert.id}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-10"
-            style={{
-              left: `${25 + index * 20}%`,
-              top: `${30 + index * 15}%`,
-            }}
-          >
-            <div className="relative">
-              <div
-                className={`w-6 h-6 rounded-full border-2 border-white shadow-lg ${getSeverityColor(alert.severity)} group-hover:scale-125 transition-all duration-200`}
-              >
-                <div className="absolute inset-0 rounded-full animate-ping opacity-75"></div>
-              </div>
-
-              {/* Alert Tooltip */}
-              <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <Card className="w-56 shadow-xl">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-sm">{alert.title}</h4>
-                      <Badge
-                        className={`text-xs ${
-                          alert.severity === "High"
-                            ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-                            : alert.severity === "Medium"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                              : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                        }`}
-                      >
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">{alert.description}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{alert.crop}</span>
-                      <span>{alert.date}</span>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">by {alert.author}</div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
-        ))}
+      {/* Map Container */}
+      <div className="relative h-96 rounded-xl overflow-hidden border shadow-lg">
+        <div ref={mapRef} className="w-full h-full"></div>
 
         {/* Map Controls */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
-          <Button size="icon" variant="secondary" className="w-10 h-10 shadow-lg">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="w-10 h-10 shadow-lg"
+            onClick={handleZoomIn}
+          >
             <ZoomIn className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="secondary" className="w-10 h-10 shadow-lg">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="w-10 h-10 shadow-lg"
+            onClick={handleZoomOut}
+          >
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="secondary" className="w-10 h-10 shadow-lg">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="w-10 h-10 shadow-lg"
+            onClick={handleRecenter}
+          >
             <Navigation className="w-4 h-4" />
           </Button>
-          <Button size="icon" variant="secondary" className="w-10 h-10 shadow-lg">
+          <Button
+            size="icon"
+            variant="secondary"
+            className="w-10 h-10 shadow-lg"
+            onClick={handleRefreshAlerts}
+          >
             <Layers className="w-4 h-4" />
           </Button>
         </div>
 
-        {/* Scale Indicator */}
-        <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-black/90 rounded px-2 py-1 text-xs font-mono">
-          0 ——— 5km
-        </div>
+        {/* Loading overlay */}
+        {!isMapLoaded && (
+          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600">Loading map...</p>
+            </div>
+          </div>
+        )}
+      </div>
 
-        {/* Compass */}
-        <div className="absolute bottom-4 right-4 w-12 h-12 bg-white/90 dark:bg-black/90 rounded-full flex items-center justify-center shadow-lg">
-          <div className="text-xs font-bold">N</div>
-          <div className="absolute w-1 h-4 bg-red-500 rounded-full transform -translate-y-1"></div>
-        </div>
+      {/* Alert Statistics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {['Critical', 'High', 'Medium', 'Low'].map(severity => {
+          const count = currentAlerts.filter(alert => alert.severity === severity).length;
+          const severityData = getSeverityColor(severity);
+          
+          return (
+            <Card key={severity}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{severity}</p>
+                    <p className="text-lg font-bold">{count}</p>
+                  </div>
+                  <div className={`w-3 h-3 rounded-full ${severityData.bgColor}`}></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Legend */}
@@ -216,35 +461,39 @@ export function EnhancedMap({ userRole, user, alerts = [] }: EnhancedMapProps) {
             <MapPin className="w-4 h-4" />
             Map Legend
           </h4>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <h5 className="text-sm font-medium">Alert Priority</h5>
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                  <span className="text-sm">High Priority</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                  <span className="text-sm">Medium Priority</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-sm">Low Priority</span>
-                </div>
+                {['Critical', 'High', 'Medium', 'Low'].map(severity => {
+                  const severityData = getSeverityColor(severity);
+                  const icon = getSeverityIcon(severity);
+                  
+                  return (
+                    <div key={severity} className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full border border-white shadow-sm flex items-center justify-center text-xs"
+                        style={{ backgroundColor: severityData.color }}
+                      >
+                        {icon}
+                      </div>
+                      <span className="text-sm">{severity} Priority</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            {userRole === "farmer" && (
-              <div className="space-y-2">
-                <h5 className="text-sm font-medium">Locations</h5>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center">
-                    <Home className="w-2 h-2 text-white" />
-                  </div>
-                  <span className="text-sm">Your Farm</span>
+            <div className="space-y-2">
+              <h5 className="text-sm font-medium">Locations</h5>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Home className="w-2 h-2 text-white" />
                 </div>
+                <span className="text-sm">
+                  {userRole === "Farmer" ? "Your Farm" : "Your Location"}
+                </span>
               </div>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -252,11 +501,12 @@ export function EnhancedMap({ userRole, user, alerts = [] }: EnhancedMapProps) {
       {/* Map Instructions */}
       <div className="text-center text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
         <p>
-          {userRole === "agronomist"
-            ? "Hover over markers to view alert details and engagement metrics. Use controls to navigate the map."
-            : "Your farm location is marked in blue. Hover over alert markers to view details and save important alerts."}
+          {userRole === "Agronomist"
+            ? "Click on alert markers to view details. Use the controls to navigate and refresh alerts in real-time."
+            : "Your location is marked in blue. Click on alert markers to view details and assess risks to your crops."}
         </p>
       </div>
+
     </div>
-  )
+  );
 }

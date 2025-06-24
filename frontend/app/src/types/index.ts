@@ -123,3 +123,21 @@ export interface UserStats {
   engagementScore: number
   lastActiveDate: string
 }
+
+
+
+// {
+//   "id": "80e35d48-8e02-45a8-b0ae-fdd8d4d32905",
+//   "title": "asdasd asd asd asdas das dasd",
+//   "description": "asd asd a sdas kdhoias idaiusduia udias iudydas",
+//   "crop": "Corn",
+//   "latitude": 32.2290891,
+//   "longitude": -7.9477194,
+//   "severity": "Critical",
+//   "date": "2025-06-03",
+//   "author": 1,
+//   "category": "advisory",
+//   "radius": 25000.0,
+//   "distance": 0.0,
+//   "is_within_radius": true
+// },
