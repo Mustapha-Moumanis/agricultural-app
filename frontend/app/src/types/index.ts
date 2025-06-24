@@ -34,38 +34,19 @@ export interface User {
 // cropTypes?: string[]
 
 export interface Alert {
-  id: string
-  title: string
-  description: string
-  cropType: string
-  category: "pest_outbreak" | "disease" | "weather_damage" | "harvest_ready" | "equipment_sharing" | "general"
-  severity: "low" | "medium" | "high" | "critical"
-  location: {
-    lat: number
-    lng: number
-    address: string
-    radius: number // coverage area in meters
-  }
-  contactInfo?: {
-    phone?: string
-    email?: string
-  }
-  validUntil: string // ISO date string
-  images?: string[]
-  author: {
-    id: string
-    name: string
-    role: "agronomist" | "farmer"
-  }
-  createdAt: string
-  updatedAt: string
-  views: number
-  bookmarks: number
-  isBookmarked?: boolean
-  status: "active" | "expired" | "resolved"
-  tags?: string[]
+  id: string;
+  title: string;
+  description: string;
+  crop: string;
+  latitude: number;
+  longitude: number;
+  severity: "Low" | "Medium" | "High" | "Critical";
+  date: string;
+  author: number;
+  category: string;
+  radius: number;
+  distance?: number;
 }
-
 
 export interface AlertFilter {
   cropTypes: string[]
@@ -91,6 +72,7 @@ export interface Notification {
   createdAt: string
   severity?: "low" | "medium" | "high" | "critical"
   actionUrl?: string
+  isNew?: boolean
 }
 export interface WeatherUpdate {
   id: string
@@ -123,3 +105,21 @@ export interface UserStats {
   engagementScore: number
   lastActiveDate: string
 }
+
+
+
+// {
+//   "id": "80e35d48-8e02-45a8-b0ae-fdd8d4d32905",
+//   "title": "asdasd asd asd asdas das dasd",
+//   "description": "asd asd a sdas kdhoias idaiusduia udias iudydas",
+//   "crop": "Corn",
+//   "latitude": 32.2290891,
+//   "longitude": -7.9477194,
+//   "severity": "Critical",
+//   "date": "2025-06-03",
+//   "author": 1,
+//   "category": "advisory",
+//   "radius": 25000.0,
+//   "distance": 0.0,
+//   "is_within_radius": true
+// },

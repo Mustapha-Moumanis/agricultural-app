@@ -1,4 +1,5 @@
-import api from "./api"
+import api from "./axios"
+
 import type { User } from "@/types"
 
 export interface LocationData {

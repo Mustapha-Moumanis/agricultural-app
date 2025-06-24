@@ -150,9 +150,21 @@ export const authApi = {
 }
 
 export const alertsApi = {
-  getAlerts: async (filters?: any): Promise<Alert[]> => {
+  getAlerts: async (lat: number, lng: number, radius: number): Promise<Alert[]> => {
     try {
-      const response = await api.get("/alerts/", { params: filters })
+      const response = await api.get(`/alerts/?lat=${lat}&lng=${lng}&radius=${radius}`)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch alerts",
+        error.response,
+      )
+    }
+  },
+  getMyAlerts: async (): Promise<Alert[]> => {
+    try {
+      const response = await api.get(`/alerts/my-alerts`)
       return response.data
     } catch (error: any) {
       throw new ApiError(
@@ -165,9 +177,11 @@ export const alertsApi = {
 
   createAlert: async (alertData: any): Promise<Alert> => {
     try {
+      console.log(alertData)
       const response = await api.post("/alerts/", alertData)
       return response.data
     } catch (error: any) {
+      console.log(error)
       throw new ApiError(
         error.response?.status || 500,
         error.response?.data?.detail || "Failed to create alert",

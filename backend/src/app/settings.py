@@ -35,6 +35,7 @@ DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 
 # CSRF_TRUSTED_ORIGINS = env.list("ALLOWED_HOSTS", default=[])
@@ -53,6 +54,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'dj_rest_auth',
+    'channels',
 
     'django.contrib.sites',
     'allauth',
@@ -65,6 +67,16 @@ INSTALLED_APPS = [
     'users',
     'alerts',
 ]
+
+ASGI_APPLICATION = "app.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
+
 
 SITE_ID = 1
 

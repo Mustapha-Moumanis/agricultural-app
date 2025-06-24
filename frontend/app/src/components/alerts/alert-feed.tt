@@ -18,7 +18,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/hooks/use-auth"
 import { alertsApi } from "@/lib/api"
 import type { Alert, AlertFilter } from "@/types"
 import { toast } from "sonner"
@@ -183,12 +182,6 @@ function AlertCard({ alert, onBookmark, onContact, onShare }: AlertCardProps) {
               </span>
               <span>By {alert.author.name}</span>
             </div>
-
-            {(alert.contactInfo?.phone || alert.contactInfo?.email) && (
-              <Button variant="outline" size="sm" onClick={() => onContact(alert)} className="h-8">
-                Contact
-              </Button>
-            )}
           </div>
         </div>
       </CardContent>
@@ -362,7 +355,6 @@ function AlertFilters({ filters, onFiltersChange, isOpen, onToggle }: AlertFilte
 }
 
 export function AlertFeed() {
-  const { user } = useAuth()
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")

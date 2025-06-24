@@ -7,13 +7,13 @@ class Alert(models.Model):
         ("Low", "Low"),
         ("Medium", "Medium"),
         ("High", "High"),
+        ("Critical", "Critical"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
     crop = models.CharField(max_length=100)
-    location = models.CharField(max_length=255)
     latitude = models.FloatField()
     longitude = models.FloatField()
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
 import { Mail, CheckCircle, RefreshCw, ArrowLeft, AlertCircle } from "lucide-react"
 import { ThemeToggle } from "../theme-toggle"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -42,7 +42,6 @@ export function EmailVerification() {
   const [generalError, setGeneralError] = useState<string>("")
 
   const email = location.state?.email || ""
-  const userData = location.state?.userData
 
   const form = useForm<z.infer<typeof VerificationFormSchema>>({
     resolver: zodResolver(VerificationFormSchema),

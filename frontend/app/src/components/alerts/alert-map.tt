@@ -67,7 +67,6 @@ export function AlertMap({
   const [markers, setMarkers] = useState<MapMarker[]>([])
   const [hoveredMarker, setHoveredMarker] = useState<string | null>(null)
   const [mapStyle, setMapStyle] = useState<"roadmap" | "satellite" | "terrain">("roadmap")
-  const [showClusters, setShowClusters] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -100,7 +99,7 @@ export function AlertMap({
         setIsLoading(false)
         toast.success("Location updated")
       },
-      (error) => {
+      () => {
         setIsLoading(false)
         toast.error("Failed to get location")
       },
