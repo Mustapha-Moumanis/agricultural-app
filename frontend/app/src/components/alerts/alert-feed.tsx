@@ -1,0 +1,594 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Search,
+  MapPin,
+  Clock,
+  Eye,
+  Bookmark,
+  Share2,
+  AlertTriangle,
+  ChevronDown,
+  SlidersHorizontal,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
+import { alertsApi } from "@/lib/api"
+import type { Alert, AlertFilter } from "@/types"
+import { toast } from "sonner"
+
+const CROP_TYPES = [
+  "wheat",
+  "corn",
+  "rice",
+  "soybeans",
+  "tomatoes",
+  "potatoes",
+  "onions",
+  "carrots",
+  "lettuce",
+  "spinach",
+  "apples",
+  "oranges",
+  "grapes",
+  "cotton",
+  "sugarcane",
+]
+
+const CATEGORIES = [
+  { id: "pest_outbreak", name: "Pest Outbreak", icon: "🐛" },
+  { id: "disease", name: "Plant Disease", icon: "🦠" },
+  { id: "weather_damage", name: "Weather Damage", icon: "⛈️" },
+  { id: "harvest_ready", name: "Harvest Ready", icon: "🌾" },
+  { id: "equipment_sharing", name: "Equipment Sharing", icon: "🚜" },
+  { id: "general", name: "General Alert", icon: "📢" },
+]
+
+const SEVERITY_LEVELS = [
+  { id: "low", name: "Low", color: "bg-green-100 text-green-800 border-green-300" },
+  { id: "medium", name: "Medium", color: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+  { id: "high", name: "High", color: "bg-orange-100 text-orange-800 border-orange-300" },
+  { id: "critical", name: "Critical", color: "bg-red-100 text-red-800 border-red-300" },
+]
+
+interface AlertCardProps {
+  alert: Alert
+  onBookmark: (alertId: string) => void
+  onContact: (alert: Alert) => void
+  onShare: (alert: Alert) => void
+}
+
+function AlertCard({ alert, onBookmark, onContact, onShare }: AlertCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  const category = CATEGORIES.find((cat) => cat.id === alert.category)
+  const severity = SEVERITY_LEVELS.find((sev) => sev.id === alert.severity)
+
+  const timeAgo = useMemo(() => {
+    const now = new Date()
+    const created = new Date(alert.createdAt)
+    const diffInHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60))
+
+    if (diffInHours < 1) return "Just now"
+    if (diffInHours < 24) return `${diffInHours}h ago`
+    const diffInDays = Math.floor(diffInHours / 24)
+    if (diffInDays < 7) return `${diffInDays}d ago`
+    return created.toLocaleDateString()
+  }, [alert.createdAt])
+
+  const isExpired = new Date(alert.validUntil) < new Date()
+
+  return (
+    <Card
+      className={cn(
+        "transition-all duration-200 hover:shadow-lg",
+        isExpired && "opacity-60",
+        alert.severity === "critical" && "border-red-300 bg-red-50/50",
+      )}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Badge className={severity?.color} variant="outline">
+                {severity?.name}
+              </Badge>
+              <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                {category?.icon} {category?.name}
+              </Badge>
+              {isExpired && (
+                <Badge variant="outline" className="bg-gray-100 text-gray-600">
+                  Expired
+                </Badge>
+              )}
+            </div>
+
+            <CardTitle className="text-lg leading-tight mb-1">{alert.title}</CardTitle>
+
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">🌾 {alert.cropType}</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {alert.location.address}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {timeAgo}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onBookmark(alert.id)}
+              className={cn("h-8 w-8 p-0", alert.isBookmarked && "text-yellow-600")}
+            >
+              <Bookmark className={cn("w-4 h-4", alert.isBookmarked && "fill-current")} />
+            </Button>
+
+            <Button variant="ghost" size="sm" onClick={() => onShare(alert)} className="h-8 w-8 p-0">
+              <Share2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-0">
+        <div className="space-y-3">
+          <p className={cn("text-sm leading-relaxed", !isExpanded && "line-clamp-3")}>{alert.description}</p>
+
+          {alert.description.length > 150 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="h-auto p-0 text-blue-600 hover:text-blue-700"
+            >
+              {isExpanded ? "Show less" : "Read more"}
+              <ChevronDown className={cn("w-4 h-4 ml-1 transition-transform", isExpanded && "rotate-180")} />
+            </Button>
+          )}
+
+          {alert.images && alert.images.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {alert.images.slice(0, 3).map((image, index) => (
+                <img
+                  key={index}
+                  src={image || "/placeholder.svg"}
+                  alt={`Alert image ${index + 1}`}
+                  className="w-full h-24 object-cover rounded-lg"
+                />
+              ))}
+              {alert.images.length > 3 && (
+                <div className="w-full h-24 bg-gray-100 rounded-lg flex items-center justify-center text-sm text-gray-600">
+                  +{alert.images.length - 3} more
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t">
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {alert.views} views
+              </span>
+              <span>By {alert.author.name}</span>
+            </div>
+
+            {(alert.contactInfo?.phone || alert.contactInfo?.email) && (
+              <Button variant="outline" size="sm" onClick={() => onContact(alert)} className="h-8">
+                Contact
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+interface AlertFiltersProps {
+  filters: AlertFilter
+  onFiltersChange: (filters: AlertFilter) => void
+  isOpen: boolean
+  onToggle: () => void
+}
+
+function AlertFilters({ filters, onFiltersChange, isOpen, onToggle }: AlertFiltersProps) {
+  const clearFilters = () => {
+    onFiltersChange({
+      cropTypes: [],
+      categories: [],
+      severityLevels: [],
+      timeRange: "all",
+      sortBy: "date",
+      sortOrder: "desc",
+    })
+  }
+
+  const activeFiltersCount =
+    filters.cropTypes.length +
+    filters.categories.length +
+    filters.severityLevels.length +
+    (filters.timeRange !== "all" ? 1 : 0)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Button variant="outline" onClick={onToggle} className="flex items-center gap-2">
+          <SlidersHorizontal className="w-4 h-4" />
+          Filters
+          {activeFiltersCount > 0 && (
+            <Badge variant="secondary" className="ml-1">
+              {activeFiltersCount}
+            </Badge>
+          )}
+        </Button>
+
+        {activeFiltersCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            Clear all
+          </Button>
+        )}
+      </div>
+
+      {isOpen && (
+        <Card className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Crop Types */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Crop Types</label>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {CROP_TYPES.map((crop) => (
+                  <label key={crop} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.cropTypes.includes(crop)}
+                      onChange={(e) => {
+                        const newCropTypes = e.target.checked
+                          ? [...filters.cropTypes, crop]
+                          : filters.cropTypes.filter((c) => c !== crop)
+                        onFiltersChange({ ...filters, cropTypes: newCropTypes })
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm capitalize">{crop}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Categories */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Categories</label>
+              <div className="space-y-1">
+                {CATEGORIES.map((category) => (
+                  <label key={category.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.categories.includes(category.id)}
+                      onChange={(e) => {
+                        const newCategories = e.target.checked
+                          ? [...filters.categories, category.id]
+                          : filters.categories.filter((c) => c !== category.id)
+                        onFiltersChange({ ...filters, categories: newCategories })
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm">
+                      {category.icon} {category.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Severity */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Severity</label>
+              <div className="space-y-1">
+                {SEVERITY_LEVELS.map((level) => (
+                  <label key={level.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.severityLevels.includes(level.id)}
+                      onChange={(e) => {
+                        const newLevels = e.target.checked
+                          ? [...filters.severityLevels, level.id]
+                          : filters.severityLevels.filter((l) => l !== level.id)
+                        onFiltersChange({ ...filters, severityLevels: newLevels })
+                      }}
+                      className="rounded"
+                    />
+                    <Badge className={level.color} variant="outline">
+                      {level.name}
+                    </Badge>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Range & Sort */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Time Range</label>
+                <Select
+                  value={filters.timeRange}
+                  onValueChange={(value: any) => onFiltersChange({ ...filters, timeRange: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="24h">Last 24 hours</SelectItem>
+                    <SelectItem value="week">Last week</SelectItem>
+                    <SelectItem value="month">Last month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sort by</label>
+                <Select
+                  value={filters.sortBy}
+                  onValueChange={(value: any) => onFiltersChange({ ...filters, sortBy: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="distance">Distance</SelectItem>
+                    <SelectItem value="severity">Severity</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+export function AlertFeed() {
+  const { user } = useAuth()
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<AlertFilter>({
+    cropTypes: [],
+    categories: [],
+    severityLevels: [],
+    timeRange: "all",
+    sortBy: "date",
+    sortOrder: "desc",
+  })
+
+  useEffect(() => {
+    loadAlerts()
+  }, [filters])
+
+  const loadAlerts = async () => {
+    try {
+      setLoading(true)
+      const data = await alertsApi.getAlerts()
+      setAlerts(data)
+    } catch (error) {
+      console.error("Failed to load alerts:", error)
+      toast.error("Failed to load alerts")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredAlerts = useMemo(() => {
+    let filtered = alerts
+
+    // Search filter
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (alert) =>
+          alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          alert.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          alert.cropType.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    }
+
+    // Crop type filter
+    if (filters.cropTypes.length > 0) {
+      filtered = filtered.filter((alert) => filters.cropTypes.includes(alert.cropType))
+    }
+
+    // Category filter
+    if (filters.categories.length > 0) {
+      filtered = filtered.filter((alert) => filters.categories.includes(alert.category))
+    }
+
+    // Severity filter
+    if (filters.severityLevels.length > 0) {
+      filtered = filtered.filter((alert) => filters.severityLevels.includes(alert.severity))
+    }
+
+    // Time range filter
+    if (filters.timeRange !== "all") {
+      const now = new Date()
+      const timeThreshold = new Date()
+
+      switch (filters.timeRange) {
+        case "24h":
+          timeThreshold.setHours(now.getHours() - 24)
+          break
+        case "week":
+          timeThreshold.setDate(now.getDate() - 7)
+          break
+        case "month":
+          timeThreshold.setMonth(now.getMonth() - 1)
+          break
+      }
+
+      filtered = filtered.filter((alert) => new Date(alert.createdAt) >= timeThreshold)
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      let comparison = 0
+
+      switch (filters.sortBy) {
+        case "date":
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          break
+        case "severity":
+          const severityOrder = { low: 1, medium: 2, high: 3, critical: 4 }
+          comparison = severityOrder[a.severity] - severityOrder[b.severity]
+          break
+        case "distance":
+          // Would need user location for this
+          comparison = 0
+          break
+      }
+
+      return filters.sortOrder === "desc" ? -comparison : comparison
+    })
+
+    return filtered
+  }, [alerts, searchQuery, filters])
+
+  const handleBookmark = async (alertId: string) => {
+    try {
+      // Toggle bookmark
+      setAlerts((prev) =>
+        prev.map((alert) => (alert.id === alertId ? { ...alert, isBookmarked: !alert.isBookmarked } : alert)),
+      )
+      toast.success("Bookmark updated")
+    } catch (error) {
+      toast.error("Failed to update bookmark")
+    }
+  }
+
+  const handleContact = (alert: Alert) => {
+    // Open contact modal or direct contact
+    if (alert.contactInfo?.phone) {
+      window.open(`tel:${alert.contactInfo.phone}`)
+    } else if (alert.contactInfo?.email) {
+      window.open(`mailto:${alert.contactInfo.email}`)
+    }
+  }
+
+  const handleShare = async (alert: Alert) => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: alert.title,
+          text: alert.description,
+          url: `${window.location.origin}/alerts/${alert.id}`,
+        })
+      } else {
+        await navigator.clipboard.writeText(`${window.location.origin}/alerts/${alert.id}`)
+        toast.success("Link copied to clipboard")
+      }
+    } catch (error) {
+      toast.error("Failed to share alert")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(5)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded"></div>
+                <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search alerts by title, description, or crop type..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <AlertFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          isOpen={showFilters}
+          onToggle={() => setShowFilters(!showFilters)}
+        />
+      </div>
+
+      {/* Results Summary */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {filteredAlerts.length} alert{filteredAlerts.length !== 1 ? "s" : ""} found
+        </p>
+      </div>
+
+      {/* Alert Cards */}
+      <div className="space-y-4">
+        {filteredAlerts.length === 0 ? (
+          <Card className="p-8 text-center">
+            <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No alerts found</h3>
+            <p className="text-muted-foreground mb-4">Try adjusting your search criteria or filters</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchQuery("")
+                setFilters({
+                  cropTypes: [],
+                  categories: [],
+                  severityLevels: [],
+                  timeRange: "all",
+                  sortBy: "date",
+                  sortOrder: "desc",
+                })
+              }}
+            >
+              Clear all filters
+            </Button>
+          </Card>
+        ) : (
+          filteredAlerts.map((alert) => (
+            <AlertCard
+              key={alert.id}
+              alert={alert}
+              onBookmark={handleBookmark}
+              onContact={handleContact}
+              onShare={handleShare}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}

@@ -6,6 +6,7 @@ import random
 
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+# from django.contrib.gis.db import models as geomodels
 
 def GenerateProfileImagePath(instance, filename):
     ext = filename.split('.')[-1]
@@ -13,20 +14,33 @@ def GenerateProfileImagePath(instance, filename):
     name = f'profile_image.{ext}'
     return os.path.join(path, name)
 
-def GenerateDefaultImagePath():
-    path = f'/static/default/{random.randint(1, 2)}.svg'
-    return path
-
 class User(AbstractUser):
     class Roles(models.TextChoices):
         Farmer = "Farmer", "Farmer"
         Agronomist = "Agronomist", "Agronomist"
     
-    avatar = models.ImageField(upload_to=GenerateProfileImagePath, max_length=200, default=GenerateDefaultImagePath)
+    avatar = models.ImageField(upload_to=GenerateProfileImagePath, max_length=200, blank=True, null=True)
     reset_password_pin = models.CharField(max_length=256, null=True, blank=True)
-    date_of_birth = models.DateField(null=True, blank=True)
-    role = models.CharField(
-        max_length=20,
-        choices=Roles.choices,
-        default=Roles.Farmer
-    )
+    role = models.CharField(max_length=20, choices=Roles.choices, default=Roles.Farmer)
+
+    # Location
+
+    country = models.CharField(max_length=100, null=True, blank=True)
+    region = models.CharField(max_length=100, null=True, blank=True)
+    city = models.CharField(max_length=100, null=True, blank=True)
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
+
+    def assign_default_avatar(self):
+        if self.role == self.Roles.Farmer:
+            return f"default/farmer.png"
+        elif self.role == self.Roles.Agronomist:
+            return f"default/agronomist.png"
+        return None
+    
+    def save(self, *args, **kwargs):
+        if not self.avatar:
+            default_path = self.assign_default_avatar()
+            if default_path:
+                self.avatar.name = default_path
+        super().save(*args, **kwargs)

@@ -86,7 +86,6 @@ class Migration(migrations.Migration):
                 (
                     "avatar",
                     models.ImageField(
-                        default=users.models.GenerateDefaultImagePath,
                         max_length=200,
                         upload_to=users.models.GenerateProfileImagePath,
                     ),

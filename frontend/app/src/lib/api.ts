@@ -1,5 +1,5 @@
 import api from "./axios"
-import type { User } from "@/types"
+import type { User, Alert } from "@/types"
 
 export class ApiError extends Error {
   public response?: any
@@ -149,36 +149,240 @@ export const authApi = {
   },
 }
 
-// // Other API functions
-// export const alertsApi = {
-//   getAlerts: async () => {
-//     try {
-//       const response = await api.get("/api/alerts")
-//       return response.data
-//     } catch (error: any) {
-//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to fetch alerts")
-//     }
-//   },
+export const alertsApi = {
+  getAlerts: async (filters?: any): Promise<Alert[]> => {
+    try {
+      const response = await api.get("/alerts/", { params: filters })
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch alerts",
+        error.response,
+      )
+    }
+  },
 
-//   createAlert: async (alertData: any) => {
-//     try {
-//       const response = await api.post("/api/alerts", alertData)
-//       return response.data
-//     } catch (error: any) {
-//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to create alert")
-//     }
-//   },
-// }
+  createAlert: async (alertData: any): Promise<Alert> => {
+    try {
+      const response = await api.post("/alerts/", alertData)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to create alert",
+        error.response,
+      )
+    }
+  },
 
-// export const userApi = {
-//   updateProfile: async (userData: Partial<User>) => {
-//     try {
-//       const response = await api.put("/api/user", userData)
-//       return response.data
-//     } catch (error: any) {
-//       throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to update profile")
-//     }
-//   },
-// }
+  getAlert: async (alertId: string): Promise<Alert> => {
+    try {
+      const response = await api.get(`/alerts/${alertId}/`)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch alert",
+        error.response,
+      )
+    }
+  },
+
+  updateAlert: async (alertId: string, alertData: any): Promise<Alert> => {
+    try {
+      const response = await api.put(`/alerts/${alertId}/`, alertData)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to update alert",
+        error.response,
+      )
+    }
+  },
+
+  deleteAlert: async (alertId: string): Promise<void> => {
+    try {
+      await api.delete(`/alerts/${alertId}/`)
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to delete alert",
+        error.response,
+      )
+    }
+  },
+
+  bookmarkAlert: async (alertId: string): Promise<void> => {
+    try {
+      await api.post(`/alerts/${alertId}/bookmark/`)
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to bookmark alert",
+        error.response,
+      )
+    }
+  },
+
+  unbookmarkAlert: async (alertId: string): Promise<void> => {
+    try {
+      await api.delete(`/alerts/${alertId}/bookmark/`)
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to remove bookmark",
+        error.response,
+      )
+    }
+  },
+
+  reportAlert: async (alertId: string, reason: string): Promise<void> => {
+    try {
+      await api.post(`/alerts/${alertId}/report/`, { reason })
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to report alert",
+        error.response,
+      )
+    }
+  },
+
+  getBookmarkedAlerts: async (): Promise<Alert[]> => {
+    try {
+      const response = await api.get("/alerts/bookmarked/")
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch bookmarked alerts",
+        error.response,
+      )
+    }
+  },
+
+  getNearbyAlerts: async (lat: number, lng: number, radius: number): Promise<Alert[]> => {
+    try {
+      const response = await api.get("/alerts/nearby/", {
+        params: { lat, lng, radius },
+      })
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch nearby alerts",
+        error.response,
+      )
+    }
+  },
+}
+
+export const userApi = {
+  updateProfile: async (userData: Partial<User>) => {
+    try {
+      const response = await api.put("/auth/user", userData)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(error.response?.status || 500, error.response?.data?.message || "Failed to update profile")
+    }
+  },
+  updateLocation: async (locationData: {
+    country: string
+    region: string
+    city: string
+    latitude?: number
+    longitude?: number
+  }) => {
+    try {
+      const response = await api.put("/user/location/", locationData)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to update location",
+        error.response,
+      )
+    }
+  },
 
 
+  getUserStats: async (): Promise<any> => {
+    try {
+      const response = await api.get("/user/stats/")
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch user stats",
+        error.response,
+      )
+    }
+  },
+
+  updateNotificationPreferences: async (preferences: any) => {
+    try {
+      const response = await api.patch("/user/notifications/", preferences)
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to update notification preferences",
+        error.response,
+      )
+    }
+  },
+}
+
+// Notifications API
+export const notificationsApi = {
+  getNotifications: async (): Promise<any[]> => {
+    try {
+      const response = await api.get("/api/notifications/")
+      return response.data
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to fetch notifications",
+        error.response,
+      )
+    }
+  },
+
+  markAsRead: async (notificationId: string): Promise<void> => {
+    try {
+      await api.patch(`/api/notifications/${notificationId}/`, { isRead: true })
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to mark notification as read",
+        error.response,
+      )
+    }
+  },
+
+  markAllAsRead: async (): Promise<void> => {
+    try {
+      await api.post("/api/notifications/mark-all-read/")
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to mark all notifications as read",
+        error.response,
+      )
+    }
+  },
+
+  deleteNotification: async (notificationId: string): Promise<void> => {
+    try {
+      await api.delete(`/api/notifications/${notificationId}/`)
+    } catch (error: any) {
+      throw new ApiError(
+        error.response?.status || 500,
+        error.response?.data?.detail || "Failed to delete notification",
+        error.response,
+      )
+    }
+  },
+}
