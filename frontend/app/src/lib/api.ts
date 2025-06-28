@@ -39,8 +39,10 @@ export const authApi = {
   }) => {
     try {
       const response = await api.post("/auth/registration/", userData)
+      console.log("=> Registration error:", response)
       return response.data
     } catch (error: any) {
+      console.log("=> Registration error:", import.meta.env.VITE_API_URL)
       const apiError = new ApiError(
         error.response?.status || 500,
         error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || "Registration failed",

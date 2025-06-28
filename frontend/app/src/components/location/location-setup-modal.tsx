@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react";
+import { useState, type ChangeEvent } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -68,8 +68,6 @@ export function LocationSetupModal({ user, isOpen, onClose, onLocationUpdated }:
   // State for location selectors
   const [selectedCountry, setSelectedCountry] = useState<LocationOption | null>(null)
   const [selectedState, setSelectedState] = useState<LocationOption | null>(null)
-  const [selectedCity, setSelectedCity] = useState<LocationOption | null>(null)
-
   const form = useForm<z.infer<typeof LocationFormSchema>>({
     resolver: zodResolver(LocationFormSchema),
     defaultValues: {
@@ -80,7 +78,7 @@ export function LocationSetupModal({ user, isOpen, onClose, onLocationUpdated }:
       longitude: user.longitude,
     },
   })
-
+  // const [selectedCity, setSelectedCity] = useState<LocationOption | null>(null)
   // Helper function to format field errors
   const getFieldError = (fieldName: string) => {
     if (apiErrors[fieldName]) {
@@ -110,39 +108,25 @@ export function LocationSetupModal({ user, isOpen, onClose, onLocationUpdated }:
   //   form.setValue("city", city.name)
   // }
   const handleCountrySelect = (e: LocationOption | ChangeEvent<HTMLInputElement>) => {
-    if ('target' in e) {
-      // It's a ChangeEvent - ignore or handle differently
-      return
-    }
     const country = e as LocationOption
     setSelectedCountry(country)
     setSelectedState(null)
-    setSelectedCity(null)
     form.setValue("country", country.name)
     form.setValue("region", "")
     form.setValue("city", "")
   }
 
   const handleStateSelect = (e: LocationOption | ChangeEvent<HTMLInputElement>) => {
-    if ('target' in e) {
-      return
-    }
     const state = e as LocationOption
     setSelectedState(state)
-    setSelectedCity(null)
     form.setValue("region", state.name)
     form.setValue("city", "")
   }
 
   const handleCitySelect = (e: LocationOption | ChangeEvent<HTMLInputElement>) => {
-    if ('target' in e) {
-      return
-    }
     const city = e as LocationOption
-    setSelectedCity(city)
     form.setValue("city", city.name)
   }
-
   // Enhanced reverse geocoding with fallback providers
   const reverseGeocodeWithBigDataCloud = async (latitude: number, longitude: number): Promise<GeocodingResult | null> => {
     try {
@@ -574,7 +558,7 @@ export function LocationSetupModal({ user, isOpen, onClose, onLocationUpdated }:
                     <FormControl>
                       <div className="relative">
                         <CountrySelect
-                          onChange={handleCountrySelect as (country: LocationOption) => void}
+                          onChange={handleCountrySelect}
                           placeHolder="Select Country"
                           containerClassName="w-full rounded-md border focus-within:ring-2 focus-within:ring-blue-500"
                           inputClassName="w-full !border-none !outline-none bg-transparent px-3 sm:px-4 py-2 sm:py-2.5"
@@ -601,7 +585,7 @@ export function LocationSetupModal({ user, isOpen, onClose, onLocationUpdated }:
                       <div className="relative">
                         <StateSelect
                           countryid={selectedCountry?.id ?? 0}
-                          onChange={handleStateSelect as (state: LocationOption) => void}
+                          onChange={handleStateSelect}
                           placeHolder="Select State"
                           containerClassName="w-full rounded-md border focus-within:ring-2 focus-within:ring-blue-500"
                           inputClassName="w-full !border-none !outline-none bg-transparent px-3 sm:px-4 py-2 sm:py-2.5"

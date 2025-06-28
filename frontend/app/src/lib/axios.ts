@@ -3,7 +3,7 @@
 
 // // Create axios instance with base configuration
 // const api = axios.create({
-//   baseURL: process.env.REACT_APP_API_URL || "http://localhost:8000",
+//   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
 //   timeout: 10000,
 //   headers: {
 //     "Content-Type": "application/json",
@@ -41,7 +41,7 @@
 
 //         // Try to refresh token using dj-rest-auth endpoint
 //         const refreshResponse = await axios.post(
-//           `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/auth/token/refresh/`,
+//           `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/auth/token/refresh/`,
 //           { refresh: refreshToken },
 //           {
 //             headers: {
@@ -94,7 +94,7 @@ import { toast } from "sonner"
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: "http://localhost:8000",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -132,7 +132,7 @@ api.interceptors.response.use(
 
         // Try to refresh token using dj-rest-auth endpoint
         const refreshResponse = await axios.post(
-          `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/auth/token/refresh/`,
+          `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/auth/token/refresh/`,
           { refresh: refreshToken },
           {
             headers: {
