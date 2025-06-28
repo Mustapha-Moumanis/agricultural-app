@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.register(userData)
       return response
     } catch (error) {
-      console.error("Registration error:", error)
+      console.log("Registration error:", error)
       if (error instanceof ApiError) {
         throw error
       }

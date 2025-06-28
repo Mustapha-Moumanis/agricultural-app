@@ -86,7 +86,7 @@ EMAIL_URL=smtp://user:password@localhost:25
 
 **Frontend `.env` file** (`frontend/.env-frontend`):
 ```env
-REACT_APP_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8000
 ```
 
 ### 3. Build and Run

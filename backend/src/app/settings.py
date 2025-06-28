@@ -201,12 +201,9 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-# EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
-# EMAIL_HOST_USER = 'ba71e5eb990846'
-# EMAIL_HOST_PASSWORD = 'aeef454c84d374'
-# EMAIL_PORT = '2525'
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # EMAIL_HOST = config('EMAIL_HOST')
 # EMAIL_USE_TLS = True
@@ -214,11 +211,11 @@ AUTHENTICATION_BACKENDS = [
 # EMAIL_HOST_USER = config('EMAIL_USER')
 # EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
 # django.core.mail.backends.console.emailbackend
-EMAIL_CONFIG = env.email(
-    'EMAIL_URL',
-    default='smtp://user:password@localhost:25'
-)
-vars().update(EMAIL_CONFIG)
+# EMAIL_CONFIG = env.email(
+#     'EMAIL_URL',
+#     default='smtp://user:password@localhost:25'
+# )
+# vars().update(EMAIL_CONFIG)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

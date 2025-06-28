@@ -93,6 +93,7 @@ export function AgronomistDashboard() {
       <header className="bg-card border-b px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <img src="/agri-icon" alt="Logo" className="w-10 h-10 rounded-full" />
             <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-lg">
               <span className="text-white text-sm font-bold">CA</span>
             </div>
