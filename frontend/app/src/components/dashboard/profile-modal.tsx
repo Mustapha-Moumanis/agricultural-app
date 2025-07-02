@@ -1,6 +1,5 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -134,7 +133,7 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
             </div>
 
             {/* Role-specific fields */}
-            {user.role === "agronomist" && (
+            {user.role === "Agronomist" && (
               <div className="space-y-2">
                 <Label htmlFor="specialization" className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4" />
@@ -149,7 +148,7 @@ export function ProfileModal({ user, onClose, onUpdate }: ProfileModalProps) {
               </div>
             )}
 
-            {user.role === "farmer" && (
+            {user.role === "Farmer" && (
               <div className="space-y-2">
                 <Label htmlFor="farmLocation" className="flex items-center gap-2">
                   <MapPin className="w-4 h-4" />

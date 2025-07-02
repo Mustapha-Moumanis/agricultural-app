@@ -43,6 +43,7 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -62,10 +63,9 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'dj_rest_auth.registration',
 
-    # 'rest_framework_simplejwt',
-
     'users',
     'alerts',
+    'notifications',
 ]
 
 ASGI_APPLICATION = "app.asgi.application"
@@ -205,11 +205,12 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# EMAIL_HOST = config('EMAIL_HOST')
+# EMAIL_HOST = env('EMAIL_HOST')
 # EMAIL_USE_TLS = True
-# EMAIL_PORT = config('EMAIL_PORT', cast=int)
-# EMAIL_HOST_USER = config('EMAIL_USER')
-# EMAIL_HOST_PASSWORD = config('EMAIL_PASSWORD')
+# EMAIL_PORT = env('EMAIL_PORT', cast=int)
+# EMAIL_HOST_USER = env('EMAIL_USER')
+# EMAIL_HOST_PASSWORD = env('EMAIL_PASSWORD')
+
 # django.core.mail.backends.console.emailbackend
 # EMAIL_CONFIG = env.email(
 #     'EMAIL_URL',
@@ -231,3 +232,45 @@ ACCOUNT_EMAIL_CONFIRMATION_HMAC = False
 
 ACCOUNT_ADAPTER = 'users.adapter.AccountAdapter'
 AUTH_USER_MODEL = 'users.User'
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': 'django_rest_framework.log',
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 7,
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'my_app': { # Custom logger for your DRF app
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False, # Prevent logs from propagating to parent loggers
+        },
+    },
+}

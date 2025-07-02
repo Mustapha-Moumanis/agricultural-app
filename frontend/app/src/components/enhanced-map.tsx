@@ -28,7 +28,7 @@ export function EnhancedMap({
   user, 
   alerts = [], 
   onAlertClick,
-  websocketUrl = "ws://localhost:8000/ws/alerts/"
+  websocketUrl = "ws://localhost:8000/ws/notifications/"
 }: EnhancedMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -77,6 +77,7 @@ export function EnhancedMap({
     }
 
     try {
+      console.log(websocketUrl)
       wsRef.current = new WebSocket(websocketUrl);
       
       wsRef.current.onopen = () => {
@@ -100,7 +101,7 @@ export function EnhancedMap({
 
       wsRef.current.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        
+        console.log("dta recived : ",data)
         switch (data.type) {
           case 'alerts_list':
             setCurrentAlerts(data.alerts);
@@ -125,7 +126,7 @@ export function EnhancedMap({
         setWsConnected(false);
         console.log('WebSocket disconnected');
         // Attempt to reconnect after 3 seconds
-        setTimeout(initWebSocket, 3000);
+        // setTimeout(initWebSocket, 3000);
       };
 
       wsRef.current.onerror = (error) => {
@@ -169,7 +170,7 @@ export function EnhancedMap({
     return () => {
       wsRef.current?.close();
     };
-  }, [initWebSocket]);
+  }, []);
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -325,6 +326,7 @@ export function EnhancedMap({
 
   const handleRefreshAlerts = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN && userLocation) {
+      console.log("get alert from backend  using socket")
       wsRef.current.send(JSON.stringify({
         type: 'get_alerts',
         lat: userLocation.lat,

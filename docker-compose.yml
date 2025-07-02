@@ -36,7 +36,7 @@ services:
         image: frontend
         restart: on-failure
         env_file:
-            - ./frontend/.env-frontend
+            - ./frontend/.env
         ports:
             - "3000:3000"
         networks:
@@ -47,20 +47,20 @@ services:
             # - ./frontend/app/node_modules:/app/node_modules
             # - media:/app/static
     
-    # backend:
-    #     container_name: backend
-    #     build: ./backend/
-    #     image: backend
-    #     restart: on-failure
-    #     env_file:
-    #         - .env
-    #     ports:
-    #         - "8000:8000"
-    #     networks:
-    #         - agricultural-network
-    #     volumes:
-    #         - ./backend/src/:/code/
-            # - media:/code/static
+    backend:
+        container_name: backend
+        build: ./backend/
+        image: backend
+        restart: on-failure
+        env_file:
+            - ./backend/.env
+        ports:
+            - "8000:8000"
+        networks:
+            - agricultural-network
+        volumes:
+            - ./backend/src/:/code/
+            - media:/code/static
 
 networks:
     agricultural-network:

@@ -16,6 +16,7 @@ class Alert(models.Model):
     crop = models.CharField(max_length=100)
     latitude = models.FloatField()
     longitude = models.FloatField()
+    # address = models.CharField(max_length=100)
     severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES)
     date = models.DateField()
     author = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -17,14 +17,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { LogOut, Search, ChevronDown } from "lucide-react"
+import { LogOut, Search, ChevronDown, UserRoundPen } from "lucide-react"
 import { EnhancedMap } from "../enhanced-map"
 import { LocationSetupModal } from "@/components/location/location-setup-modal"
 import { NotificationBell } from "../notifications/notification-bell"
-// import { ProfileModal } from "./profile-modal"
+import { ProfileModal } from "./profile-modal"
 import { ThemeToggle } from "../theme-toggle"
 import type { Alert } from "@/types"
-// import { userApi } from "@/lib/api"
+import { userApi } from "@/lib/api"
 // Import the new components
 // import { WeatherWidget } from "../weather-widget"
 // import { QuickActions } from "../quick-actions"
@@ -36,7 +36,7 @@ export function FarmerDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCrop, setSelectedCrop] = useState("all")
   // const [savedAlerts, setSavedAlerts] = useState<string[]>([])
-  // const [showProfile, setShowProfile] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [selectedSeverity, setSelectedSeverity] = useState("all")
   const [activeTab, setActiveTab] = useState("feed")
 
@@ -109,46 +109,18 @@ export function FarmerDashboard() {
         <div className="flex items-center justify-between">
 
           <div className="flex flex-row items-center gap-3">
-            <img src="/agri-icon.png" alt="Logo" className="w-10 h-10 rounded-full" />
+            <Avatar className="h-12 w-12">
+              <AvatarImage 
+                src="/agri-icon.png" 
+                alt="agri logo" 
+                className="object-cover"
+              />
+            </Avatar>
             <h1 className="font-semibold text-foreground">CropAlert</h1>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <NotificationBell />
-            {/*<Button variant="ghost" size="icon" onClick={() => setShowProfile(true)}>
-              <Settings className="w-4 h-4" />
-            </Button>*/}
-
-            {/* <DropdownMenu>
-              <Avatar className="h-8 w-8 rounded-full">
-                <AvatarImage src={user?.avatar} alt={user?.username} />
-                <AvatarFallback className="rounded-full">
-                  {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user?.username}</span>
-                <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
-              </div>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-auto p-2">
-                  <ChevronDown />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Billing</DropdownMenuItem>
-                <DropdownMenuItem>Team</DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Button variant="ghost" size="icon" onClick={handleLogout}>
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                  </Button>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu> */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button 
@@ -178,7 +150,7 @@ export function FarmerDashboard() {
                   <ChevronDown className="h-4 w-4 text-muted-foreground cursor-pointer rounded-lg hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-auto">
                 <DropdownMenuLabel className="font-normal sm:hidden">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{user?.username}</p>
@@ -191,12 +163,12 @@ export function FarmerDashboard() {
                 <DropdownMenuSeparator className="sm:hidden" />
                 
                 <DropdownMenuGroup>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setShowProfile(true)}>
+                    <UserRoundPen className="mr-2 h-4 w-4"/>
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  
-                  <DropdownMenuItem className="cursor-pointer">
+                   
+                  {/*<DropdownMenuItem className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
@@ -205,11 +177,11 @@ export function FarmerDashboard() {
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Billing</span>
                   </DropdownMenuItem>
-                  
+                   
                   <DropdownMenuItem className="cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Team</span>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem>*/}
                 </DropdownMenuGroup>
                 
                 <DropdownMenuSeparator />
@@ -347,7 +319,7 @@ export function FarmerDashboard() {
                   user={user || undefined}
                   alerts={alerts}
                   onAlertClick={(alert) => console.log('Alert clicked:', alert)}
-                  websocketUrl="ws://localhost:8000/ws/alerts/"
+                  websocketUrl="ws://localhost:8000/ws/notifications/"
                 />
               </CardContent>
             </Card>
@@ -364,7 +336,7 @@ export function FarmerDashboard() {
         />
       )}
       {/* Profile Modal */}
-      {/*showProfile && <ProfileModal user={user} onClose={() => setShowProfile(false)} onUpdate={userApi} />*/}
+      {showProfile && <ProfileModal user={user} onClose={() => setShowProfile(false)} onUpdate={userApi} />}
 
     </div>
   )

@@ -5,8 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { LogOut, Search, Plus } from "lucide-react"
+import { LogOut, Search, Plus, ChevronDown, UserRoundPen } from "lucide-react"
 import { EnhancedMap } from "../enhanced-map"
 import { NotificationBell } from "../notifications/notification-bell"
 import { ThemeToggle } from "../theme-toggle"
@@ -93,20 +103,95 @@ export function AgronomistDashboard() {
       <header className="bg-card border-b px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/agri-icon" alt="Logo" className="w-10 h-10 rounded-full" />
-            <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white text-sm font-bold">CA</span>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Welcome, {user?.username} | Role: {user?.role} </p>
-            </div>
+              <Avatar className="h-12 w-12">
+                <AvatarImage 
+                  src="/agri-icon.png" 
+                  alt="agri logo" 
+                  className="object-cover"
+                />
+              </Avatar>
+              <h1 className="font-semibold text-foreground">CropAlert</h1>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <NotificationBell />
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" />
-            </Button>
+            {/*<Button variant="ghost" size="icon" onClick={() => setShowProfile(true)}>
+              <Settings className="w-4 h-4" />
+            </Button>*/}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="flex items-center gap-3 h-10 pl-2 pr-0 py-2 hover:bg-accent focus:bg-accent transition-colors rounded-lg"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage 
+                      src={user?.avatar} 
+                      alt={user?.username || 'User avatar'} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-primary text-primary-foreground font-medium">
+                      {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="hidden sm:flex flex-col items-start min-w-0">
+                    <span className="text-sm font-medium truncate max-w-[120px]">
+                      {user?.username || 'User'}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+                      {user?.role || 'No role'}
+                    </span>
+                  </div>
+
+                  <ChevronDown className="h-4 w-4 text-muted-foreground cursor-pointer rounded-lg hidden sm:block" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-auto">
+                <DropdownMenuLabel className="font-normal sm:hidden">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user?.username}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.role || 'No role assigned'}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                
+                <DropdownMenuSeparator className="sm:hidden" />
+                
+                <DropdownMenuGroup>
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setShowProfile(true)}>
+                    <UserRoundPen className="mr-2 h-4 w-4"/>
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                   
+                  {/*<DropdownMenuItem className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Billing</span>
+                  </DropdownMenuItem>
+                   
+                  <DropdownMenuItem className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Team</span>
+                  </DropdownMenuItem>*/}
+                </DropdownMenuGroup>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem 
+                  className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -245,7 +330,7 @@ export function AgronomistDashboard() {
                   user={user || undefined}
                   alerts={alerts}
                   onAlertClick={(alert) => console.log('Alert clicked:', alert)}
-                  websocketUrl="ws://localhost:8000/ws/alerts/"
+                  websocketUrl="ws://localhost:8000/ws/notifications/"
                 />
               </CardContent>
             </Card>
